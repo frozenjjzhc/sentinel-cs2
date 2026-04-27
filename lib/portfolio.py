@@ -35,17 +35,20 @@ def compute_summary(state: dict) -> dict:
         tiers = pos.get("tiers", [])
         active_cost = 0
         active_value = 0
-        active_qty_units = 0
+        active_pieces = 0     # 真实持有把数
+        active_pct_sum = 0    # 占计划满仓的累计 %（仅展示用）
         if tiers:
             for t in tiers:
-                # qty_pct is fractional (0.30 = 30%); we treat units as qty_pct
-                # since user manages absolute "pieces" mentally
-                qty = t.get("qty_pct", 0)
+                # 优先用 qty_pieces（真实把数），若缺失回落到旧 qty_pct 字段（向后兼容）
+                pieces = t.get("qty_pieces")
+                if pieces is None:
+                    pieces = t.get("qty_pct", 0)   # 旧数据
                 entry = t.get("entry_price", 0)
-                active_cost += entry * qty
+                active_cost  += entry * pieces
                 if current_price:
-                    active_value += current_price * qty
-                active_qty_units += qty
+                    active_value += current_price * pieces
+                active_pieces  += pieces
+                active_pct_sum += t.get("qty_pct", 0)
 
         # Legacy holding (real units, not qty_pct)
         legacy = item.get("legacy_holding", {})
@@ -67,7 +70,8 @@ def compute_summary(state: dict) -> dict:
             "id": item["id"],
             "name": item.get("short_name", item["id"]),
             "current_price": current_price,
-            "active_qty": active_qty_units,
+            "active_pieces": active_pieces,
+            "active_pct": active_pct_sum,    # 占满仓计划的总比例（展示）
             "active_avg": pos.get("avg_entry_price"),
             "active_cost": active_cost,
             "active_value": active_value,

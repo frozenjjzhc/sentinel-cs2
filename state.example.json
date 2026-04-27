@@ -1,6 +1,7 @@
 {
-  "version": 3,
+  "version": 4,
   "_note": "示例状态文件。复制这个文件为 m4a4_buzz_kill_state.json，然后通过 dashboard 的【设置】页填充你的 token / 监控品种。",
+  "_v4_changes": "v4: position.tiers 新增 qty_pieces (真实把数)；旧 qty_pct 字段保留作为占计划比例（展示用）。",
   "global": {
     "pushplus_tokens": [],
     "homepage_url": "https://www.steamdt.com",

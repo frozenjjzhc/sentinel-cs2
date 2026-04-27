@@ -1458,7 +1458,7 @@
             <div class="font-medium mb-3">${it.short_name || it.name}</div>
             ${pos ? `
               <div class="text-sm space-y-1 mb-3">
-                <div>新仓：<strong>${(pos.total_qty_pct*100).toFixed(0)}%</strong> @均价 ${fmtPrice(pos.avg_entry_price)}</div>
+                <div>新仓：<strong>${pos.total_pieces || 0} 把</strong>${pos.total_qty_pct ? ` <span class="text-xs text-[var(--text-tertiary)]">（占计划 ${(pos.total_qty_pct*100).toFixed(0)}%）</span>` : ''} @均价 ${fmtPrice(pos.avg_entry_price)}</div>
                 ${pos.pnl_pct != null ? `<div class="${pctClass(pos.pnl_pct*100)}">浮盈 ${fmtPct(pos.pnl_pct*100)}</div>` : ''}
                 <div class="text-xs text-[var(--text-tertiary)]">最高 ${fmtPrice(pos.highest_since_first_entry)}  ·  止盈已执行 ${(pos.tp_executed||[]).join(', ') || '无'}</div>
               </div>
@@ -1472,7 +1472,7 @@
 
             <!-- 操作表单 -->
             <div class="mt-3 pt-3 border-t border-black/5">
-              <div class="flex items-center gap-2 mb-2">
+              <div class="flex flex-wrap items-center gap-2 mb-2">
                 <select class="text-xs px-2 py-1.5 rounded-lg border border-black/10 bg-white" data-action>
                   <option value="buy">加仓</option>
                   <option value="sell">卖出</option>
@@ -1481,11 +1481,13 @@
                   <option value="clear">清空新仓</option>
                 </select>
                 <input type="number" step="0.01" min="0" placeholder="价格 ¥" class="text-xs px-2 py-1.5 rounded-lg border border-black/10 w-24" data-price>
-                <input type="number" step="1" min="0" max="100" placeholder="%" class="text-xs px-2 py-1.5 rounded-lg border border-black/10 w-16" data-pct>
+                <input type="number" step="0.01" min="0" placeholder="把数" class="text-xs px-2 py-1.5 rounded-lg border border-black/10 w-20" data-pieces>
+                <input type="number" step="1" min="0" max="100" placeholder="占计划% (选填)" class="text-xs px-2 py-1.5 rounded-lg border border-black/10 w-28" data-pct>
                 <button class="text-xs px-3 py-1.5 rounded-lg bg-indigo-600 text-white font-medium hover:bg-indigo-700 transition" onclick="submitPositionAction('${it.id}', this)">执行</button>
               </div>
-              <div class="text-[11px] text-[var(--text-tertiary)]">
-                加仓/卖出：% = 仓位百分比 (如 30 = 30%)。设套牢仓：% = 数量（把）。
+              <div class="text-[11px] text-[var(--text-tertiary)] leading-relaxed">
+                加仓/卖出：填<strong>价格 + 把数</strong>，"占计划%"选填用于策略追踪。<br/>
+                设套牢仓：填<strong>均价 + 把数</strong>。移除套牢仓 / 清空新仓不需要填任何字段。
               </div>
             </div>
           </div>
@@ -1498,22 +1500,25 @@
   async function submitPositionAction(itemId, btn) {
     const card = btn.closest('.rounded-2xl');
     const action = card.querySelector('[data-action]').value;
-    const price = parseFloat(card.querySelector('[data-price]').value);
-    const pct   = parseFloat(card.querySelector('[data-pct]').value);
+    const price  = parseFloat(card.querySelector('[data-price]').value);
+    const pieces = parseFloat(card.querySelector('[data-pieces]').value);
+    const pctRaw = parseFloat(card.querySelector('[data-pct]').value);
 
     let path, body, method = 'POST';
     if (action === 'buy') {
-      if (!price || !pct) return showToast('价格和 % 都必填', 'error');
+      if (!price || !pieces) return showToast('价格和把数都必填', 'error');
       path = `/api/positions/${itemId}/buy`;
-      body = { price, qty_pct: pct / 100 };
+      body = { price, qty_pieces: pieces };
+      if (!isNaN(pctRaw) && pctRaw > 0) body.qty_pct = pctRaw / 100;
     } else if (action === 'sell') {
-      if (!price || !pct) return showToast('价格和 % 都必填', 'error');
+      if (!price || !pieces) return showToast('价格和把数都必填', 'error');
       path = `/api/positions/${itemId}/sell`;
-      body = { price, qty_pct: pct / 100 };
+      body = { price, qty_pieces: pieces };
+      if (!isNaN(pctRaw) && pctRaw > 0) body.qty_pct = pctRaw / 100;
     } else if (action === 'legacy') {
-      if (!price || !pct) return showToast('均价和数量都必填', 'error');
+      if (!price || !pieces) return showToast('均价和把数都必填', 'error');
       path = `/api/positions/${itemId}/legacy`;
-      body = { quantity: pct, avg_entry_price: price, action: 'set' };
+      body = { quantity: pieces, avg_entry_price: price, action: 'set' };
     } else if (action === 'legacy_remove') {
       path = `/api/positions/${itemId}/legacy`;
       body = { action: 'remove' };

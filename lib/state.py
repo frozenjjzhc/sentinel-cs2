@@ -69,23 +69,38 @@ def is_holding(item) -> bool:
 
 
 def compute_position_summary(item):
-    """Update avg_entry_price, total_qty_pct, pnl_pct."""
+    """
+    Recompute summary fields:
+      - avg_entry_price  按 qty_pieces 加权（真实成本均价）
+      - total_qty_pct    Σ qty_pct（占计划满仓的总比例，展示用）
+      - total_pieces     Σ qty_pieces（真实把数）
+    """
     pos = item.get("position", {})
     tiers = pos.get("tiers", [])
     if not tiers:
         pos["avg_entry_price"] = None
         pos["total_qty_pct"] = 0
+        pos["total_pieces"] = 0
         return pos
 
-    total_qty = sum(t.get("qty_pct", 0) for t in tiers)
-    if total_qty <= 0:
+    def _pieces(t):
+        # 优先 qty_pieces；缺失回落 qty_pct（向后兼容）
+        v = t.get("qty_pieces")
+        return v if v is not None else t.get("qty_pct", 0)
+
+    total_pieces = sum(_pieces(t) for t in tiers)
+    total_pct    = sum(t.get("qty_pct", 0) for t in tiers)
+
+    if total_pieces <= 0:
         pos["avg_entry_price"] = None
         pos["total_qty_pct"] = 0
+        pos["total_pieces"] = 0
         return pos
 
-    weighted_sum = sum(t.get("entry_price", 0) * t.get("qty_pct", 0) for t in tiers)
-    pos["avg_entry_price"] = weighted_sum / total_qty
-    pos["total_qty_pct"] = total_qty
+    weighted = sum(t.get("entry_price", 0) * _pieces(t) for t in tiers)
+    pos["avg_entry_price"] = weighted / total_pieces
+    pos["total_qty_pct"]   = total_pct
+    pos["total_pieces"]    = total_pieces
     return pos
 
 
