@@ -1,0 +1,42 @@
+@echo off
+REM ============================================================
+REM Sentinel.bat - 一键启动整套系统（API + 监控 + Dashboard）
+REM
+REM 双击即用：API 进程内嵌监控调度器，
+REM   - 自动每 10min 跑 monitor_fast
+REM   - 自动每 1H   跑 monitor_slow
+REM   - 自动每天 23:00 跑 daily_review
+REM 同时打开浏览器 dashboard。
+REM
+REM 关闭这个窗口即停止 API + 监控（一切干净）
+REM ============================================================
+chcp 65001 > nul
+cd /d "%~dp0"
+
+REM 检测 8000 端口是否已占用
+netstat -ano | findstr ":8000.*LISTENING" >nul 2>&1
+if %errorlevel% equ 0 (
+    echo [Sentinel] 检测到 API 已在运行，直接打开 dashboard
+    timeout /t 1 /nobreak >nul
+    start "" http://localhost:8000
+    exit /b 0
+)
+
+echo.
+echo ============================================================
+echo   Sentinel 启动中...
+echo   API + 监控调度器 + Dashboard 一体化运行
+echo ============================================================
+echo.
+echo  - API:        http://localhost:8000
+echo  - 监控:       嵌入式（API 启动后自动开跑）
+echo  - 关闭系统：  关掉这个窗口（Ctrl+C 或 X）
+echo.
+
+REM 后台等待 4 秒后自动打开浏览器
+start "Sentinel Browser Opener" /B cmd /c "timeout /t 4 /nobreak >nul && start """" http://localhost:8000"
+
+REM 前台跑 API（关窗口即停一切）
+set PYTHONIOENCODING=utf-8
+set PYTHONUTF8=1
+python backend_api.py

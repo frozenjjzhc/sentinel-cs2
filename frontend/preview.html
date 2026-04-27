@@ -1,0 +1,2290 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Sentinel · CS2 饰品智能监控</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  /* ============================================================
+     设计令牌：苹果式极简 + CS2 高级色彩点缀
+     ============================================================ */
+  :root {
+    --bg-primary: #FFFFFF;
+    --bg-secondary: #F5F5F7;
+    --text-primary: #1D1D1F;
+    --text-secondary: #6E6E73;
+    --text-tertiary: #86868B;
+
+    /* CS2 饰品色谱 */
+    --skin-marble:  linear-gradient(135deg, #FF3CAC 0%, #784BA0 50%, #2B86C5 100%);
+    --skin-doppler: linear-gradient(135deg, #4158D0 0%, #C850C0 46%, #FFCC70 100%);
+    --skin-tempered:linear-gradient(135deg, #FA8BFF 0%, #2BD2FF 50%, #2BFF88 100%);
+    --skin-recoil:  linear-gradient(135deg, #FF5F6D 0%, #FFC371 100%);
+    --skin-ember:   linear-gradient(135deg, #F857A6 0%, #FF5858 100%);
+  }
+
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display",
+                 "Helvetica Neue", "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+
+  /* —— 漂浮渐变光晕背板（hero / 各 section 通用） —— */
+  .glow-orb {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(80px);
+    opacity: 0.55;
+    pointer-events: none;
+    will-change: transform;
+    animation: float 18s ease-in-out infinite;
+  }
+  .glow-orb.orb-1 { background: var(--skin-marble);  width: 480px; height: 480px;
+                    top: -120px; left: -120px; animation-delay: 0s; }
+  .glow-orb.orb-2 { background: var(--skin-doppler); width: 380px; height: 380px;
+                    top: 40%;   right: -100px; animation-delay: -6s; }
+  .glow-orb.orb-3 { background: var(--skin-tempered);width: 420px; height: 420px;
+                    bottom: -160px; left: 30%;  animation-delay: -12s; }
+  @keyframes float {
+    0%,100% { transform: translate(0,0)   scale(1); }
+    33%     { transform: translate(40px,-30px) scale(1.06); }
+    66%     { transform: translate(-30px,20px) scale(0.96); }
+  }
+
+  /* —— 渐变流光文字 —— */
+  .text-gradient {
+    background: linear-gradient(120deg, #1D1D1F 0%, #6366F1 25%,
+                                #EC4899 60%, #F59E0B 100%);
+    background-size: 220% 220%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    animation: shimmer 8s ease-in-out infinite;
+  }
+  @keyframes shimmer {
+    0%,100% { background-position: 0%   50%; }
+    50%     { background-position: 100% 50%; }
+  }
+
+  /* —— 磁吸胶囊按钮 —— */
+  .magnetic-btn {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 16px 32px;
+    border-radius: 9999px;
+    font-weight: 500;
+    font-size: 17px;
+    color: white;
+    background: #1D1D1F;
+    cursor: pointer;
+    transition: transform 0.35s cubic-bezier(0.2,0.8,0.2,1),
+                box-shadow 0.4s cubic-bezier(0.2,0.8,0.2,1);
+    will-change: transform;
+    overflow: hidden;
+  }
+  .magnetic-btn::before {
+    content: '';
+    position: absolute; inset: -2px;
+    border-radius: 9999px;
+    padding: 2px;
+    background: linear-gradient(120deg, #6366F1, #EC4899, #F59E0B, #6366F1);
+    background-size: 300% 300%;
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+            mask-composite: exclude;
+    animation: borderflow 4s linear infinite;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  .magnetic-btn:hover::before { opacity: 1; }
+  .magnetic-btn:hover {
+    transform: translateY(-2px) scale(1.04);
+    box-shadow: 0 18px 40px -12px rgba(99,102,241,0.45);
+  }
+  @keyframes borderflow {
+    0%   { background-position: 0%   50%; }
+    100% { background-position: 300% 50%; }
+  }
+
+  /* —— 玻璃卡片 —— */
+  .glass-card {
+    background: rgba(255,255,255,0.65);
+    backdrop-filter: blur(24px) saturate(180%);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    border: 1px solid rgba(255,255,255,0.35);
+    border-radius: 28px;
+    box-shadow:
+      0 1px 0 rgba(255,255,255,0.6) inset,
+      0 30px 80px -30px rgba(15,23,42,0.18);
+    transition: transform 0.5s cubic-bezier(0.2,0.8,0.2,1),
+                box-shadow 0.5s cubic-bezier(0.2,0.8,0.2,1);
+  }
+  .glass-card:hover {
+    transform: translateY(-8px);
+    box-shadow:
+      0 1px 0 rgba(255,255,255,0.8) inset,
+      0 50px 100px -30px rgba(15,23,42,0.28);
+  }
+
+  /* —— 滚动入场动画 —— */
+  .reveal {
+    opacity: 0;
+    transform: translateY(60px);
+    transition: opacity 0.9s cubic-bezier(0.16,1,0.3,1),
+                transform 0.9s cubic-bezier(0.16,1,0.3,1);
+  }
+  .reveal.in-view { opacity: 1; transform: translateY(0); }
+  .reveal.delay-1 { transition-delay: 0.1s; }
+  .reveal.delay-2 { transition-delay: 0.2s; }
+  .reveal.delay-3 { transition-delay: 0.3s; }
+  .reveal.delay-4 { transition-delay: 0.4s; }
+
+  /* —— Sticky 视差区 —— */
+  .sticky-stage {
+    position: relative;
+    height: 300vh;
+  }
+  .sticky-pin {
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    align-items: center;
+    overflow: hidden;
+  }
+
+  /* —— 价格图样式 —— */
+  .chart-wrap { position: relative; width: 100%; height: 360px; }
+  .chart-line { fill: none; stroke: url(#chartGradient); stroke-width: 2.5;
+                stroke-linecap: round; stroke-linejoin: round;
+                stroke-dasharray: 2000; stroke-dashoffset: 2000; }
+  .chart-line.draw { animation: draw 2.5s 0.3s cubic-bezier(0.2,0.8,0.2,1) forwards; }
+  @keyframes draw { to { stroke-dashoffset: 0; } }
+  .chart-area { fill: url(#chartArea); opacity: 0; }
+  .chart-area.fadein { animation: fadein 1.6s 1.6s forwards; }
+  @keyframes fadein { to { opacity: 1; } }
+
+  /* —— 信号点 pulse —— */
+  .signal-dot {
+    fill: #6366F1; r: 5;
+    filter: drop-shadow(0 0 8px rgba(99,102,241,0.6));
+  }
+  @keyframes pulse {
+    0%,100% { r: 5; opacity: 1; }
+    50%     { r: 9; opacity: 0.55; }
+  }
+  .signal-dot.active { animation: pulse 2.4s ease-in-out infinite; }
+
+  /* —— 大数据展示 —— */
+  .stat-num {
+    font-size: 88px;
+    font-weight: 600;
+    letter-spacing: -0.04em;
+    line-height: 1;
+    background: var(--skin-doppler);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  /* —— Pill 标签 —— */
+  .pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 14px;
+    border-radius: 9999px;
+    background: rgba(99,102,241,0.08);
+    color: #6366F1;
+    font-size: 13px;
+    font-weight: 500;
+    border: 1px solid rgba(99,102,241,0.18);
+  }
+  .pill.green  { background: rgba(34,197,94,0.08); color: #16A34A; border-color: rgba(34,197,94,0.18); }
+  .pill.amber  { background: rgba(245,158,11,0.08); color: #D97706; border-color: rgba(245,158,11,0.18); }
+  .pill.rose   { background: rgba(236,72,153,0.08); color: #DB2777; border-color: rgba(236,72,153,0.18); }
+</style>
+</head>
+<body>
+
+<!-- =========================================================
+     导航条 — 4 个功能页面 + 状态 pill
+     ========================================================= -->
+<nav class="fixed top-0 inset-x-0 z-50 backdrop-blur-xl bg-white/75 border-b border-black/5">
+  <div class="max-w-7xl mx-auto px-6 h-14 flex items-center justify-between">
+    <div class="flex items-center gap-2 cursor-pointer" data-page="home">
+      <div class="w-7 h-7 rounded-lg" style="background: var(--skin-doppler);"></div>
+      <span class="font-medium tracking-tight">Sentinel</span>
+    </div>
+    <div class="flex items-center gap-2 text-sm">
+      <button class="nav-link active" data-page="home">概览</button>
+      <button class="nav-link" data-page="charts">走势图</button>
+      <button class="nav-link" data-page="positions">仓位管理</button>
+      <button class="nav-link" data-page="ai">AI 复盘</button>
+      <button class="nav-link" data-page="settings">设置</button>
+    </div>
+    <span id="nav-status-pill" class="pill" style="font-size: 12px;">⏳ 检测中</span>
+  </div>
+</nav>
+
+<style>
+  .nav-link {
+    padding: 6px 14px;
+    border-radius: 9999px;
+    color: var(--text-secondary);
+    background: transparent;
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: all 0.25s cubic-bezier(0.2,0.8,0.2,1);
+    font-size: 14px;
+  }
+  .nav-link:hover { color: var(--text-primary); background: rgba(0,0,0,0.04); }
+  .nav-link.active { color: var(--text-primary); background: rgba(99,102,241,0.08); border-color: rgba(99,102,241,0.2); }
+  .page { display: none; }
+  .page.active { display: block; }
+</style>
+
+<!-- =========================================================
+     PAGE: home（概览）
+     ========================================================= -->
+<div id="page-home" class="page active">
+
+<!-- HERO -->
+<section class="relative min-h-screen flex items-center justify-center overflow-hidden pt-14">
+  <div class="glow-orb orb-1"></div>
+  <div class="glow-orb orb-2"></div>
+  <div class="glow-orb orb-3"></div>
+
+  <div class="relative z-10 text-center px-6 max-w-5xl">
+    <div class="reveal mb-8 flex items-center justify-center gap-3">
+      <span class="pill" id="api-status">⏳ 正在检测 API...</span>
+      <span class="pill" id="market-pill" style="display: none;"></span>
+    </div>
+
+    <h1 class="reveal delay-1 text-7xl md:text-[88px] font-semibold tracking-tight leading-[1.05] mb-6">
+      <span class="text-gradient">极简</span> · <span class="text-gradient">极智</span> · <span class="text-gradient">极速</span>
+    </h1>
+
+    <p class="reveal delay-2 text-xl md:text-2xl text-[var(--text-secondary)] mb-12 max-w-2xl mx-auto leading-relaxed">
+      为 CS2 饰品交易者打造的智能信号引擎。<br/>
+      让每一次买卖，都有数据支撑。
+    </p>
+
+    <div class="reveal delay-3 flex items-center justify-center gap-4">
+      <button class="magnetic-btn" data-scroll-to="skin-cards">
+        查看实时监控
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <path d="M5 12h14M13 6l6 6-6 6"/>
+        </svg>
+      </button>
+      <button class="magnetic-btn" data-page="charts" style="background: transparent; color: var(--text-primary); border: 1px solid rgba(0,0,0,0.12);">
+        查看 K 线
+      </button>
+    </div>
+
+    <div class="reveal delay-4 mt-20 grid grid-cols-3 gap-12 max-w-3xl mx-auto">
+      <div>
+        <div class="text-4xl font-semibold tracking-tight">4</div>
+        <div class="text-sm text-[var(--text-secondary)] mt-1">监控品种</div>
+      </div>
+      <div>
+        <div class="text-4xl font-semibold tracking-tight">10<span class="text-xl text-[var(--text-tertiary)]">分钟</span></div>
+        <div class="text-sm text-[var(--text-secondary)] mt-1">扫描频率</div>
+      </div>
+      <div>
+        <div class="text-4xl font-semibold tracking-tight">96<span class="text-xl text-[var(--text-tertiary)]">%</span></div>
+        <div class="text-sm text-[var(--text-secondary)] mt-1">Token 节省</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- =========================================================
+     ChAPTER 2 - 你的饰品 24/7 守护
+     ========================================================= -->
+<section id="skin-cards" class="relative py-32 px-6">
+  <div class="max-w-7xl mx-auto">
+    <div class="text-center mb-20">
+      <span class="pill mb-6 reveal">SENTINEL ENGINE</span>
+      <h2 class="reveal delay-1 text-5xl md:text-6xl font-semibold tracking-tight leading-tight mb-6">
+        从未离开的<br/>
+        <span class="text-gradient">智能哨兵</span>
+      </h2>
+      <p class="reveal delay-2 text-xl text-[var(--text-secondary)] max-w-2xl mx-auto">
+        每 10 分钟一次价格扫描，每小时一次趋势研判，每晚一份复盘报告。
+      </p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <!-- 卡片 1 - M4A4 喧嚣杀戮 (data-skin-card 标记会被 API 替换) -->
+      <div class="glass-card reveal delay-1 p-7" data-skin-card style="background: linear-gradient(180deg, rgba(255,255,255,0.7), rgba(248,113,113,0.06));">
+        <div class="flex items-center justify-between mb-4">
+          <div class="w-12 h-12 rounded-2xl flex items-center justify-center" style="background: var(--skin-recoil);">
+            <span class="text-white font-medium text-sm">M4A4</span>
+          </div>
+          <span class="pill rose">活跃</span>
+        </div>
+        <h3 class="font-medium text-lg mb-1" data-name>喧嚣杀戮</h3>
+        <p class="text-xs text-[var(--text-tertiary)] mb-4">崭新出厂 · 一代手套板块</p>
+        <div class="text-3xl font-semibold tracking-tight" data-price>¥4,298</div>
+        <div class="flex items-center gap-2 mt-2">
+          <span class="text-sm text-emerald-600 font-medium" data-today-pct>+0.83%</span>
+          <span class="text-xs text-[var(--text-tertiary)]">今日</span>
+        </div>
+      </div>
+
+      <!-- 卡片 2 - AK 抽象派 -->
+      <div class="glass-card reveal delay-2 p-7" data-skin-card style="background: linear-gradient(180deg, rgba(255,255,255,0.7), rgba(99,102,241,0.06));">
+        <div class="flex items-center justify-between mb-4">
+          <div class="w-12 h-12 rounded-2xl flex items-center justify-center" style="background: var(--skin-doppler);">
+            <span class="text-white font-medium text-sm">AK-47</span>
+          </div>
+          <span class="pill green">持仓</span>
+        </div>
+        <h3 class="font-medium text-lg mb-1" data-name>抽象派 1337</h3>
+        <p class="text-xs text-[var(--text-tertiary)] mb-4">久经沙场 · 一代手套板块</p>
+        <div class="text-3xl font-semibold tracking-tight" data-price>¥1,238</div>
+        <div class="flex items-center gap-2 mt-2">
+          <span class="text-sm text-rose-600 font-medium" data-today-pct>-2.61%</span>
+          <span class="text-xs text-[var(--text-tertiary)]">今日</span>
+        </div>
+      </div>
+
+      <!-- 卡片 3 - M4A4 红色 DDPAT -->
+      <div class="glass-card reveal delay-3 p-7" data-skin-card style="background: linear-gradient(180deg, rgba(255,255,255,0.7), rgba(245,158,11,0.06));">
+        <div class="flex items-center justify-between mb-4">
+          <div class="w-12 h-12 rounded-2xl flex items-center justify-center" style="background: var(--skin-ember);">
+            <span class="text-white font-medium text-sm">M4A4</span>
+          </div>
+          <span class="pill amber">收藏品</span>
+        </div>
+        <h3 class="font-medium text-lg mb-1" data-name>红色 DDPAT</h3>
+        <p class="text-xs text-[var(--text-tertiary)] mb-4">崭新出厂 · 收藏品板块</p>
+        <div class="text-3xl font-semibold tracking-tight" data-price>¥2,050</div>
+        <div class="flex items-center gap-2 mt-2">
+          <span class="text-sm text-rose-600 font-medium" data-today-pct>-4.16%</span>
+          <span class="text-xs text-[var(--text-tertiary)]">今日</span>
+        </div>
+      </div>
+
+      <!-- 卡片 4 - 驾驶手套月色 -->
+      <div class="glass-card reveal delay-4 p-7" data-skin-card style="background: linear-gradient(180deg, rgba(255,255,255,0.7), rgba(168,85,247,0.06));">
+        <div class="flex items-center justify-between mb-4">
+          <div class="w-12 h-12 rounded-2xl flex items-center justify-center" style="background: var(--skin-marble);">
+            <span class="text-white font-medium text-sm">★</span>
+          </div>
+          <span class="pill">非凡</span>
+        </div>
+        <h3 class="font-medium text-lg mb-1" data-name>驾驶手套月色</h3>
+        <p class="text-xs text-[var(--text-tertiary)] mb-4">略有磨损 · 一代手套板块</p>
+        <div class="text-3xl font-semibold tracking-tight" data-price>¥10,100</div>
+        <div class="flex items-center gap-2 mt-2">
+          <span class="text-sm text-rose-600 font-medium" data-today-pct>-6.04%</span>
+          <span class="text-xs text-[var(--text-tertiary)]">今日</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- =========================================================
+     STICKY 视差区 - 智能信号引擎（home 页内）
+     ========================================================= -->
+<section class="sticky-stage" style="background: var(--bg-secondary);">
+  <div class="sticky-pin px-12">
+    <!-- 左侧：可视化（fixed） -->
+    <div class="relative h-[600px] flex items-center justify-center">
+      <div class="absolute inset-0 flex items-center justify-center">
+        <div class="glow-orb orb-2" style="position: absolute; opacity: 0.3;"></div>
+      </div>
+      <div id="sticky-visual" class="relative z-10 w-[400px] h-[400px] rounded-[48px] flex items-center justify-center transition-all duration-700"
+           style="background: var(--skin-doppler);">
+        <span id="sticky-label" class="text-white text-7xl font-semibold transition-all">A</span>
+      </div>
+    </div>
+
+    <!-- 右侧：滚动文本（按 scroll progress 切换） -->
+    <div class="relative h-full flex flex-col justify-center pl-16 max-w-xl">
+      <div id="sticky-content">
+        <span class="pill mb-6">CHAPTER 1</span>
+        <h2 class="text-5xl font-semibold tracking-tight leading-tight mb-6">
+          A 类<br/><span class="text-gradient">即时止损</span>
+        </h2>
+        <p class="text-lg text-[var(--text-secondary)] leading-relaxed">
+          固定止损、移动止损、强支撑止损、急跌检测。<br/>
+          A 类信号无视去重，触发即推送，<br/>
+          因为风险控制不能等。
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+</div> <!-- end page-home -->
+
+<!-- =========================================================
+     PAGE: charts（走势图）
+     ========================================================= -->
+<div id="page-charts" class="page" style="padding-top: 100px;">
+
+<section class="relative py-12 px-6">
+  <div class="max-w-6xl mx-auto">
+    <div class="mb-10">
+      <h2 class="text-4xl font-semibold tracking-tight mb-3">走势图</h2>
+      <p class="text-[var(--text-secondary)]">选择品种查看实时价格趋势 + 成交量。</p>
+    </div>
+
+    <!-- 控制栏：品种选择 + 图表类型切换 + 时间范围 -->
+    <div class="flex flex-wrap items-center gap-3 mb-8">
+      <select id="chart-item-select" class="px-4 py-2.5 rounded-full border border-black/10 bg-white text-sm font-medium cursor-pointer hover:border-black/20 transition">
+        <option value="">加载中...</option>
+      </select>
+
+      <div class="flex items-center gap-1 p-1 rounded-full bg-black/[0.04]">
+        <button class="chart-type-btn active" data-type="line">折线</button>
+        <button class="chart-type-btn" data-type="kline">K 线</button>
+      </div>
+
+      <div class="flex items-center gap-1 p-1 rounded-full bg-black/[0.04]">
+        <button class="chart-range-btn active" data-hours="24">24H</button>
+        <button class="chart-range-btn" data-hours="72">3D</button>
+        <button class="chart-range-btn" data-hours="168">7D</button>
+      </div>
+
+      <button id="chart-refresh" class="px-4 py-2.5 rounded-full bg-indigo-50 text-indigo-600 text-sm font-medium hover:bg-indigo-100 transition cursor-pointer">
+        ↻ 刷新
+      </button>
+    </div>
+
+    <style>
+      .chart-type-btn, .chart-range-btn {
+        padding: 6px 14px;
+        border-radius: 9999px;
+        font-size: 13px;
+        color: var(--text-secondary);
+        cursor: pointer;
+        background: transparent;
+        border: none;
+        transition: all 0.2s;
+      }
+      .chart-type-btn.active, .chart-range-btn.active {
+        background: white;
+        color: var(--text-primary);
+        box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+      }
+    </style>
+
+    <!-- 主图卡片 -->
+    <div class="rounded-[28px] p-8 backdrop-blur-2xl"
+         style="background: rgba(255,255,255,0.65); border: 1px solid rgba(255,255,255,0.35);
+                box-shadow: 0 30px 80px -30px rgba(15,23,42,0.18);">
+      <!-- 头部 -->
+      <div class="flex items-center justify-between mb-6">
+        <div>
+          <div class="flex items-center gap-3 mb-1">
+            <h3 id="chart2-title" class="text-2xl font-semibold tracking-tight">—</h3>
+            <span id="chart2-stage" class="pill" style="font-size: 12px;">—</span>
+          </div>
+          <p id="chart2-meta" class="text-sm text-[var(--text-tertiary)]">—</p>
+        </div>
+        <div class="text-right">
+          <div id="chart2-price" class="text-4xl font-semibold tracking-tight">—</div>
+          <div id="chart2-pct" class="text-sm font-medium">—</div>
+        </div>
+      </div>
+
+      <!-- 价格图 + 成交量图（共用 hover wrap） -->
+      <div id="chart-hover-wrap" class="relative" style="cursor: crosshair;">
+        <!-- 价格图 -->
+        <div class="relative w-full" style="height: 320px;">
+          <svg id="chart2-svg" viewBox="0 0 800 320" preserveAspectRatio="none" class="w-full h-full">
+            <defs>
+              <linearGradient id="ch2Grad" x1="0" x2="1" y1="0" y2="0">
+                <stop offset="0%"   stop-color="#6366F1"/>
+                <stop offset="50%"  stop-color="#EC4899"/>
+                <stop offset="100%" stop-color="#F59E0B"/>
+              </linearGradient>
+              <linearGradient id="ch2Area" x1="0" x2="0" y1="0" y2="1">
+                <stop offset="0%"   stop-color="#6366F1" stop-opacity="0.18"/>
+                <stop offset="100%" stop-color="#6366F1" stop-opacity="0"/>
+              </linearGradient>
+            </defs>
+            <g id="chart2-grid" stroke="rgba(0,0,0,0.05)" stroke-width="1"></g>
+            <g id="chart2-content"></g>
+            <!-- Hover 十字线 + 高亮点 -->
+            <line id="chart2-crosshair" x1="0" y1="0" x2="0" y2="320"
+                  stroke="rgba(99,102,241,0.5)" stroke-width="1" stroke-dasharray="4 3"
+                  opacity="0" pointer-events="none"/>
+            <circle id="chart2-dot" cx="0" cy="0" r="5"
+                    fill="white" stroke="#6366F1" stroke-width="2.5"
+                    opacity="0" pointer-events="none"/>
+          </svg>
+        </div>
+
+        <!-- 成交量图 -->
+        <div class="relative w-full mt-2" style="height: 100px;">
+          <div class="text-xs text-[var(--text-tertiary)] mb-1">成交量</div>
+          <svg id="chart2-volume" viewBox="0 0 800 80" preserveAspectRatio="none" class="w-full" style="height: 80px;">
+            <g id="chart2-volume-content"></g>
+            <line id="chart2-vol-crosshair" x1="0" y1="0" x2="0" y2="80"
+                  stroke="rgba(99,102,241,0.5)" stroke-width="1" stroke-dasharray="4 3"
+                  opacity="0" pointer-events="none"/>
+          </svg>
+        </div>
+
+        <!-- 浮动 tooltip -->
+        <div id="chart-tooltip"
+             class="absolute pointer-events-none z-20 px-3 py-2 rounded-xl text-xs font-medium leading-relaxed"
+             style="background: rgba(29,29,31,0.92); color: white; backdrop-filter: blur(10px);
+                    box-shadow: 0 8px 24px -4px rgba(0,0,0,0.25); opacity: 0;
+                    transition: opacity 0.12s; min-width: 140px;"></div>
+      </div>
+
+      <!-- X 轴时间 -->
+      <div id="chart2-xaxis" class="flex justify-between mt-2 text-xs text-[var(--text-tertiary)]"></div>
+    </div>
+  </div>
+</section>
+</div>
+
+<!-- =========================================================
+     PAGE: positions（仓位管理 - 只读视图）
+     ========================================================= -->
+<div id="page-positions" class="page" style="padding-top: 100px;">
+<section class="py-12 px-6 max-w-6xl mx-auto">
+  <h2 class="text-4xl font-semibold tracking-tight mb-3">仓位管理</h2>
+  <p class="text-[var(--text-secondary)] mb-10">查看新建仓 / 套牢仓 / 总风险面板。修改仓位请告诉 Claude 主对话。</p>
+
+  <div id="portfolio-summary" class="mb-10 rounded-[28px] p-8 backdrop-blur-2xl"
+       style="background: rgba(255,255,255,0.65); border: 1px solid rgba(255,255,255,0.35);">
+    <h3 class="text-lg font-medium mb-4">总仓位</h3>
+    <div id="portfolio-content" class="space-y-3 text-sm">加载中...</div>
+  </div>
+
+  <h3 class="text-2xl font-semibold tracking-tight mb-4">分品种</h3>
+  <div id="positions-list" class="grid grid-cols-1 md:grid-cols-2 gap-4">加载中...</div>
+
+  <div class="mt-10 p-6 rounded-2xl bg-black/[0.03]">
+    <h3 class="font-medium mb-3">如何更新仓位？</h3>
+    <p class="text-sm text-[var(--text-secondary)] leading-relaxed">
+      告诉 Claude 主对话，比如：<br/>
+      • <code class="bg-white px-2 py-0.5 rounded text-indigo-600">M4A4 喧嚣 我以 ¥4,250 建第 1 档 30%</code><br/>
+      • <code class="bg-white px-2 py-0.5 rounded text-indigo-600">AK 抽象派 ¥1,500 加第 2 档 30%</code><br/>
+      • <code class="bg-white px-2 py-0.5 rounded text-indigo-600">M4A4 喧嚣 ¥4,800 卖出 30%</code><br/>
+      Claude 会读 state.json 帮你更新 position.tiers，A 类止损规则自动激活。
+    </p>
+  </div>
+</section>
+</div>
+
+<!-- =========================================================
+     PAGE: AI 复盘 — Shadow 收益 + AI 复盘评论 + 参数提案
+     ========================================================= -->
+<div id="page-ai" class="page" style="padding-top: 100px;">
+<section class="py-12 px-6 max-w-6xl mx-auto">
+  <h2 class="text-4xl font-semibold tracking-tight mb-3">AI 复盘 / 策略迭代</h2>
+  <p class="text-[var(--text-secondary)] mb-10">影子信号回测、AI 每日评论、参数调整提案 — 所有数据驱动的迭代都在这里。</p>
+
+  <!-- ① Shadow 模拟收益 -->
+  <div class="mb-10 rounded-[28px] p-8 backdrop-blur-2xl"
+       style="background: rgba(255,255,255,0.65); border: 1px solid rgba(255,255,255,0.35);">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="text-lg font-medium">📈 Shadow 影子信号回测</h3>
+      <span class="text-xs text-[var(--text-tertiary)]">每条 BUY 推送 → 7 天后自动评估实际收益</span>
+    </div>
+    <div id="shadow-summary" class="text-sm mb-4">加载中...</div>
+    <div class="text-sm font-medium mb-2">分类型胜率</div>
+    <div id="shadow-stats-table" class="overflow-x-auto">加载中...</div>
+    <div class="text-sm font-medium mt-6 mb-2">最近 10 笔已评估</div>
+    <div id="shadow-recent-list" class="space-y-2 text-sm">加载中...</div>
+  </div>
+
+  <!-- ② AI 每日复盘 -->
+  <div class="mb-10 rounded-[28px] p-8 backdrop-blur-2xl"
+       style="background: rgba(255,255,255,0.65); border: 1px solid rgba(255,255,255,0.35);">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="text-lg font-medium">📝 AI 每日复盘评论</h3>
+      <button onclick="generateDailyReviewNow()" class="px-3 py-1.5 rounded-lg bg-indigo-50 text-indigo-700 text-xs font-medium hover:bg-indigo-100 transition">立即生成一份</button>
+    </div>
+    <div id="ai-reviews-list" class="space-y-3">加载中...</div>
+    <div class="text-xs text-[var(--text-tertiary)] mt-3">
+      默认每晚 23:00 由 daily_review.py 自动生成（需在设置里勾选「每日复盘评论」）。
+    </div>
+  </div>
+
+  <!-- ③ 参数调整提案 -->
+  <div class="rounded-[28px] p-8 backdrop-blur-2xl"
+       style="background: rgba(255,255,255,0.65); border: 1px solid rgba(255,255,255,0.35);">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="text-lg font-medium">⚙️ 参数调整提案</h3>
+      <button onclick="generateProposalsNow()" class="px-3 py-1.5 rounded-lg bg-indigo-50 text-indigo-700 text-xs font-medium hover:bg-indigo-100 transition">立即生成一批</button>
+    </div>
+    <div class="text-xs text-[var(--text-tertiary)] mb-4">
+      AI 看 shadow 30 天数据 → 提议调整 thresholds（止损/止盈/D1 距离/最小成交量等）。
+      <strong>需要至少 5 条 shadow 评估样本</strong>才会有提案。每条都需你手动点 ✅ 应用 / ❌ 拒绝。
+    </div>
+    <div id="proposals-list" class="space-y-3">加载中...</div>
+  </div>
+</section>
+</div>
+
+<!-- =========================================================
+     PAGE: settings（设置）
+     ========================================================= -->
+<div id="page-settings" class="page" style="padding-top: 100px;">
+<section class="py-12 px-6 max-w-4xl mx-auto">
+  <h2 class="text-4xl font-semibold tracking-tight mb-3">设置</h2>
+  <p class="text-[var(--text-secondary)] mb-10">PushPlus 推送 token + 监控品种 + 系统参数。</p>
+
+  <!-- PushPlus tokens -->
+  <div class="mb-10 rounded-[28px] p-8 backdrop-blur-2xl"
+       style="background: rgba(255,255,255,0.65); border: 1px solid rgba(255,255,255,0.35);">
+    <h3 class="text-lg font-medium mb-4">📱 PushPlus 微信推送</h3>
+    <div id="tokens-list" class="space-y-2 mb-4">加载中...</div>
+
+    <!-- 新增 token 表单 -->
+    <div class="p-4 rounded-2xl bg-indigo-50/50">
+      <div class="text-sm font-medium mb-2">➕ 新增 token</div>
+      <div class="flex flex-wrap gap-2 items-center">
+        <input id="new-token-name" type="text" placeholder="名字（如 backup）" class="px-3 py-2 rounded-lg border border-black/10 text-sm w-40">
+        <input id="new-token-value" type="text" placeholder="32 位 PushPlus token" class="px-3 py-2 rounded-lg border border-black/10 text-sm flex-1 min-w-[280px] font-mono">
+        <button onclick="addToken()" class="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 transition">添加</button>
+      </div>
+      <div class="text-xs text-[var(--text-tertiary)] mt-2">
+        去 <a href="https://www.pushplus.plus" target="_blank" class="text-indigo-600 underline">pushplus.plus</a> 微信扫码登录 → 复制 token 到这里
+      </div>
+    </div>
+  </div>
+
+  <!-- 监控品种 -->
+  <div class="mb-10 rounded-[28px] p-8 backdrop-blur-2xl"
+       style="background: rgba(255,255,255,0.65); border: 1px solid rgba(255,255,255,0.35);">
+    <h3 class="text-lg font-medium mb-4">🎯 监控品种</h3>
+    <div id="settings-items-list" class="space-y-2 mb-4">加载中...</div>
+
+    <!-- 新增品种表单 -->
+    <div class="p-4 rounded-2xl bg-indigo-50/50">
+      <div class="text-sm font-medium mb-3">➕ 新增监控品种</div>
+      <div class="space-y-2">
+        <input id="new-item-url" type="text" placeholder="SteamDT URL（必填，https://www.steamdt.com/...）" class="w-full px-3 py-2 rounded-lg border border-black/10 text-sm">
+        <div class="flex flex-wrap gap-2">
+          <input id="new-item-name" type="text" placeholder="完整名称（如 AWP | 二西莫夫 (崭新出厂)）" class="flex-1 min-w-[260px] px-3 py-2 rounded-lg border border-black/10 text-sm">
+          <input id="new-item-short" type="text" placeholder="短名（推送显示，如 AWP 二西莫夫）" class="flex-1 min-w-[200px] px-3 py-2 rounded-lg border border-black/10 text-sm">
+        </div>
+        <div class="flex flex-wrap gap-2 items-center">
+          <label class="text-xs text-[var(--text-secondary)]">板块：</label>
+          <select id="new-item-sector" class="px-3 py-2 rounded-lg border border-black/10 text-sm bg-white cursor-pointer">
+            <option value="">— 选择板块 —</option>
+          </select>
+        </div>
+
+        <details class="text-sm">
+          <summary class="cursor-pointer text-indigo-600 hover:underline py-1">关键位（可选，建议填以激活信号判定）</summary>
+          <div class="grid grid-cols-2 md:grid-cols-3 gap-2 mt-2">
+            <input id="new-item-strong" type="number" step="0.01" placeholder="强支撑 ¥" class="px-3 py-2 rounded-lg border border-black/10 text-sm">
+            <input id="new-item-primary" type="number" step="0.01" placeholder="主支撑 ¥" class="px-3 py-2 rounded-lg border border-black/10 text-sm">
+            <input id="new-item-r1" type="number" step="0.01" placeholder="阻力 R1" class="px-3 py-2 rounded-lg border border-black/10 text-sm">
+            <input id="new-item-r2" type="number" step="0.01" placeholder="阻力 R2" class="px-3 py-2 rounded-lg border border-black/10 text-sm">
+            <input id="new-item-r3" type="number" step="0.01" placeholder="阻力 R3" class="px-3 py-2 rounded-lg border border-black/10 text-sm">
+          </div>
+        </details>
+
+        <button onclick="addMonitorItem()" class="px-5 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 transition">添加品种</button>
+      </div>
+      <div class="text-xs text-[var(--text-tertiary)] mt-2">
+        添加后下次 fast 任务自动开始抓取（约 10 分钟内）。也可以立即手动跑 <code class="bg-white px-1 py-0.5 rounded">python monitor_fast.py</code>
+      </div>
+    </div>
+  </div>
+
+  <!-- LLM 接入 -->
+  <div class="mb-10 rounded-[28px] p-8 backdrop-blur-2xl"
+       style="background: rgba(255,255,255,0.65); border: 1px solid rgba(255,255,255,0.35);">
+    <h3 class="text-lg font-medium mb-4">🤖 大模型接入（Phase 1：新闻语义分类）</h3>
+
+    <div class="space-y-3 mb-4">
+      <div class="flex flex-wrap gap-2 items-center">
+        <label class="text-xs text-[var(--text-secondary)] w-20">Provider</label>
+        <select id="llm-provider" class="px-3 py-2 rounded-lg border border-black/10 text-sm bg-white">
+          <option value="anthropic">Anthropic</option>
+          <option value="openai">OpenAI</option>
+          <option value="custom">自定义 (DeepSeek / Qwen / Moonshot / 自托管)</option>
+        </select>
+      </div>
+      <div class="flex flex-wrap gap-2 items-center">
+        <label class="text-xs text-[var(--text-secondary)] w-20">Model</label>
+        <input id="llm-model" type="text" placeholder="如 claude-sonnet-4-6 / gpt-4o-mini / deepseek-chat" class="flex-1 min-w-[280px] px-3 py-2 rounded-lg border border-black/10 text-sm">
+      </div>
+      <div class="flex flex-wrap gap-2 items-center">
+        <label class="text-xs text-[var(--text-secondary)] w-20">API Key</label>
+        <input id="llm-api-key" type="password" placeholder="sk-... (脱敏存储于 state.json)" class="flex-1 min-w-[280px] px-3 py-2 rounded-lg border border-black/10 text-sm font-mono">
+      </div>
+      <div class="flex flex-wrap gap-2 items-center">
+        <label class="text-xs text-[var(--text-secondary)] w-20">Base URL</label>
+        <input id="llm-base-url" type="text" placeholder="留空用默认；自定义如 https://api.deepseek.com/v1" class="flex-1 min-w-[280px] px-3 py-2 rounded-lg border border-black/10 text-sm font-mono">
+      </div>
+
+      <div class="flex flex-wrap gap-2 items-center mt-2">
+        <button onclick="saveLLMConfig()" class="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 transition">保存配置</button>
+        <button onclick="testLLM()" class="px-4 py-2 rounded-lg bg-emerald-50 text-emerald-700 text-sm font-medium hover:bg-emerald-100 transition">测试连通</button>
+        <span id="llm-test-result" class="text-xs"></span>
+      </div>
+    </div>
+
+    <div class="border-t border-black/5 pt-4">
+      <div class="text-sm font-medium mb-2">启用模块</div>
+      <div class="space-y-2 text-sm">
+        <label class="flex items-center gap-2 cursor-pointer">
+          <input type="checkbox" id="llm-mod-news" class="cursor-pointer">
+          <span>新闻语义分类</span>
+          <span class="text-xs text-[var(--text-tertiary)]">(替代关键词，用 LLM 读 Steam News 写 fundamentals.bias)</span>
+        </label>
+        <label class="flex items-center gap-2 cursor-not-allowed opacity-50">
+          <input type="checkbox" disabled>
+          <span>庄家公告解析</span>
+          <span class="text-xs text-[var(--text-tertiary)]">(Phase 2，待开放)</span>
+        </label>
+        <label class="flex items-center gap-2 cursor-pointer">
+          <input type="checkbox" id="llm-mod-review" class="cursor-pointer">
+          <span>每日复盘评论</span>
+          <span class="text-xs text-[var(--text-tertiary)]">(daily_review 时自动生成 AI 评论，写入 ai_review)</span>
+        </label>
+        <label class="flex items-center gap-2 cursor-pointer">
+          <input type="checkbox" id="llm-mod-proposal" class="cursor-pointer">
+          <span>参数调整提案</span>
+          <span class="text-xs text-[var(--text-tertiary)]">(看 shadow 数据生成提案，需 ≥5 条样本)</span>
+        </label>
+      </div>
+      <div class="flex flex-wrap gap-2 items-center mt-4">
+        <button onclick="classifyNewsNow()" class="px-3 py-1.5 rounded-lg bg-indigo-50 text-indigo-700 text-xs font-medium hover:bg-indigo-100 transition">立即跑一次新闻分类</button>
+        <span id="llm-classify-result" class="text-xs"></span>
+      </div>
+    </div>
+
+    <div class="mt-4 p-3 rounded-xl bg-amber-50/60 text-xs text-amber-900 leading-relaxed">
+      ⚠️ API key 会以明文存到 <code class="bg-white px-1 rounded">m4a4_buzz_kill_state.json</code>。
+      该文件仅在你本地，但请不要把 state.json 上传到任何代码仓库。
+    </div>
+  </div>
+
+  <!-- 基本面 -->
+  <div class="mb-10 rounded-[28px] p-8 backdrop-blur-2xl"
+       style="background: rgba(255,255,255,0.65); border: 1px solid rgba(255,255,255,0.35);">
+    <h3 class="text-lg font-medium mb-4">🌍 基本面</h3>
+    <div id="fundamentals-content" class="text-sm space-y-2">加载中...</div>
+  </div>
+
+  <!-- 调度器控制 -->
+  <div class="rounded-[28px] p-8 backdrop-blur-2xl"
+       style="background: rgba(255,255,255,0.65); border: 1px solid rgba(255,255,255,0.35);">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="text-lg font-medium">⚙️ 监控调度器</h3>
+      <span id="scheduler-mode-badge" class="pill" style="font-size:11px;">检测中</span>
+    </div>
+
+    <!-- 模式切换 -->
+    <div class="mb-4 p-4 rounded-2xl bg-indigo-50/50">
+      <div class="text-sm font-medium mb-2">监控运行模式</div>
+      <div class="flex flex-wrap gap-2 mb-2">
+        <label class="flex items-center gap-2 text-sm cursor-pointer p-2 rounded-lg hover:bg-white/60 flex-1 min-w-[200px]">
+          <input type="radio" name="sched-mode" value="embedded" id="sched-mode-embedded">
+          <div>
+            <div class="font-medium">嵌入式（推荐）</div>
+            <div class="text-xs text-[var(--text-tertiary)]">监控随 API 一起跑，开 API 即工作</div>
+          </div>
+        </label>
+        <label class="flex items-center gap-2 text-sm cursor-pointer p-2 rounded-lg hover:bg-white/60 flex-1 min-w-[200px]">
+          <input type="radio" name="sched-mode" value="external" id="sched-mode-external">
+          <div>
+            <div class="font-medium">Windows 任务计划器</div>
+            <div class="text-xs text-[var(--text-tertiary)]">独立后台进程，关 API 也持续跑</div>
+          </div>
+        </label>
+      </div>
+    </div>
+
+    <!-- 心跳卡片 -->
+    <div id="freshness-card" class="mb-4 p-4 rounded-2xl border" style="background: rgba(34,197,94,0.04); border-color: rgba(34,197,94,0.2);">
+      <div class="flex items-center justify-between mb-2">
+        <span class="font-medium" id="freshness-status-text">检测中...</span>
+        <span class="text-xs text-[var(--text-tertiary)]" id="freshness-age">—</span>
+      </div>
+      <div class="text-xs text-[var(--text-tertiary)]" id="freshness-detail">—</div>
+      <div class="text-xs mt-2" id="freshness-hint" style="display: none;"></div>
+    </div>
+
+    <!-- 三个任务的状态 + 控制 -->
+    <div class="text-sm font-medium mb-2">三个任务的状态</div>
+    <div id="scheduler-tasks" class="space-y-2 mb-4">加载中...</div>
+
+    <div class="flex flex-wrap items-center gap-2">
+      <button onclick="schedulerToggle(true)" class="px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 text-xs font-medium hover:bg-emerald-100 transition">▶ 启动调度器</button>
+      <button onclick="schedulerToggle(false)" class="px-3 py-1.5 rounded-lg bg-rose-50 text-rose-700 text-xs font-medium hover:bg-rose-100 transition">⏸ 停止调度器</button>
+      <span id="scheduler-control-result" class="text-xs text-[var(--text-tertiary)]"></span>
+    </div>
+  </div>
+</section>
+</div>
+
+<!-- =========================================================
+     原"价格走势分析区"（隐藏，被 charts 页替代）
+     ========================================================= -->
+<section id="price-chart" class="relative py-32 px-6" style="display: none;">
+  <div class="max-w-6xl mx-auto">
+    <div class="text-center mb-16">
+      <span class="pill mb-6 reveal">PRICE INTELLIGENCE</span>
+      <h2 class="reveal delay-1 text-5xl md:text-6xl font-semibold tracking-tight mb-6">
+        每一个数据点<br/>
+        <span class="text-gradient">都讲一个故事</span>
+      </h2>
+      <p class="reveal delay-2 text-xl text-[var(--text-secondary)] max-w-2xl mx-auto">
+        累积 90 天滚动数据，多时间框架均线，6 阶段庄家识别。
+      </p>
+    </div>
+
+    <div class="reveal glass-card p-10">
+      <div class="flex items-center justify-between mb-8">
+        <div>
+          <div class="flex items-center gap-3 mb-2">
+            <h3 class="text-2xl font-semibold tracking-tight" data-chart-title>M4A4 | 喧嚣杀戮</h3>
+            <span class="pill green">D1 信号</span>
+          </div>
+          <p class="text-sm text-[var(--text-tertiary)]">崭新出厂 · 24 小时趋势</p>
+        </div>
+        <div class="text-right">
+          <div class="text-4xl font-semibold tracking-tight" data-chart-price>¥4,298</div>
+          <div class="text-sm text-emerald-600 font-medium" data-chart-pct>+0.83% (+¥35)</div>
+        </div>
+      </div>
+
+      <div class="chart-wrap">
+        <svg viewBox="0 0 800 360" preserveAspectRatio="none" class="w-full h-full">
+          <defs>
+            <linearGradient id="chartGradient" x1="0" x2="1" y1="0" y2="0">
+              <stop offset="0%"   stop-color="#6366F1"/>
+              <stop offset="50%"  stop-color="#EC4899"/>
+              <stop offset="100%" stop-color="#F59E0B"/>
+            </linearGradient>
+            <linearGradient id="chartArea" x1="0" x2="0" y1="0" y2="1">
+              <stop offset="0%"   stop-color="#6366F1" stop-opacity="0.18"/>
+              <stop offset="100%" stop-color="#6366F1" stop-opacity="0"/>
+            </linearGradient>
+          </defs>
+
+          <!-- 网格线 -->
+          <g stroke="rgba(0,0,0,0.05)" stroke-width="1">
+            <line x1="0" y1="80"  x2="800" y2="80"/>
+            <line x1="0" y1="160" x2="800" y2="160"/>
+            <line x1="0" y1="240" x2="800" y2="240"/>
+          </g>
+
+          <!-- 区域填充 -->
+          <path class="chart-area"
+                d="M 0,250 C 60,240 120,260 180,220 C 240,180 300,210 360,170
+                   C 420,140 480,180 540,150 C 600,130 660,90 720,80
+                   C 760,75 800,90 800,90 L 800,360 L 0,360 Z"/>
+
+          <!-- 主线（id 用于每次入场重启动画） -->
+          <path id="chart-stroke" class="chart-line"
+                d="M 0,250 C 60,240 120,260 180,220 C 240,180 300,210 360,170
+                   C 420,140 480,180 540,150 C 600,130 660,90 720,80
+                   C 760,75 800,90 800,90"/>
+
+          <!-- 信号点 -->
+          <circle cx="180" cy="220" class="signal-dot"/>
+          <circle cx="420" cy="155" class="signal-dot active"/>
+          <circle cx="720" cy="80"  class="signal-dot active"/>
+        </svg>
+
+        <!-- X 轴 -->
+        <div class="flex justify-between mt-4 text-xs text-[var(--text-tertiary)]">
+          <span>00:00</span><span>06:00</span><span>12:00</span><span>18:00</span><span>24:00</span>
+        </div>
+      </div>
+
+      <!-- 信号 timeline -->
+      <div class="mt-8 grid grid-cols-3 gap-4">
+        <div class="p-4 rounded-2xl bg-black/[0.03]">
+          <div class="text-xs text-[var(--text-tertiary)] mb-1">15:42</div>
+          <div class="font-medium">BUY-WHALE</div>
+          <div class="text-sm text-[var(--text-secondary)]">触庄家承诺底</div>
+        </div>
+        <div class="p-4 rounded-2xl" style="background: rgba(99,102,241,0.08);">
+          <div class="text-xs" style="color: #6366F1;">17:15 · 当前</div>
+          <div class="font-medium" style="color: #6366F1;">D1 反弹买入</div>
+          <div class="text-sm text-[var(--text-secondary)]">放量 + 大盘配合</div>
+        </div>
+        <div class="p-4 rounded-2xl bg-black/[0.03]">
+          <div class="text-xs text-[var(--text-tertiary)] mb-1">下一档</div>
+          <div class="font-medium">C1 突破前期高</div>
+          <div class="text-sm text-[var(--text-secondary)]">¥4,398 关键位</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- =========================================================
+     CTA 收尾
+     ========================================================= -->
+<section class="relative py-40 px-6 overflow-hidden">
+  <div class="glow-orb orb-1" style="top: 20%; left: 20%;"></div>
+  <div class="glow-orb orb-3" style="bottom: 0%;  right: 15%;"></div>
+
+  <div class="relative z-10 max-w-4xl mx-auto text-center">
+    <h2 class="reveal text-6xl md:text-7xl font-semibold tracking-tight leading-tight mb-8">
+      由你的<br/>
+      <span class="text-gradient">本地 Python</span><br/>
+      驱动。
+    </h2>
+    <p class="reveal delay-1 text-xl text-[var(--text-secondary)] mb-12 max-w-xl mx-auto">
+      0 token 日常运营。100% 数据本地化。完全开源可定制。
+    </p>
+    <div class="reveal delay-2 flex items-center justify-center gap-4">
+      <button class="magnetic-btn" data-scroll-to="top">回到顶部</button>
+      <button class="magnetic-btn" data-open-url="http://localhost:8000/docs" style="background: transparent; color: var(--text-primary); border: 1px solid rgba(0,0,0,0.12);">
+        查看 API 文档
+      </button>
+    </div>
+  </div>
+</section>
+
+<!-- =========================================================
+     Footer
+     ========================================================= -->
+<footer class="border-t border-black/5 py-12 px-6 text-center text-sm text-[var(--text-tertiary)]">
+  <p>Sentinel · Built with React · Tailwind · Framer Motion</p>
+  <p class="mt-2">© 2026 · 设计灵感来自 Apple.com</p>
+</footer>
+
+<script>
+  /* ============================================================
+     真实数据接入（自动检测 API_BASE）
+     - 通过 http://localhost:8000 打开 → API_BASE 用相对路径
+     - 通过 file:// 双击打开    → API_BASE 用 http://localhost:8000
+     ============================================================ */
+  const API_BASE = (location.protocol === 'file:')
+    ? 'http://localhost:8000'
+    : '';   // 同源相对路径
+
+  async function fetchAPI(path) {
+    try {
+      const r = await fetch(API_BASE + path, { signal: AbortSignal.timeout(3000) });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      return await r.json();
+    } catch (e) {
+      console.warn(`API ${path} failed:`, e.message);
+      return null;
+    }
+  }
+
+  async function apiSend(path, method, body, timeoutMs = 8000) {
+    try {
+      const r = await fetch(API_BASE + path, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: body ? JSON.stringify(body) : undefined,
+        signal: AbortSignal.timeout(timeoutMs),
+      });
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        return { ok: false, error: data.detail || `HTTP ${r.status}` };
+      }
+      return { ok: true, data };
+    } catch (e) {
+      return { ok: false, error: e.message };
+    }
+  }
+
+  function showToast(msg, type = 'success') {
+    const t = document.createElement('div');
+    t.className = 'fixed bottom-8 right-8 z-50 px-5 py-3 rounded-2xl shadow-2xl text-sm font-medium transition-all';
+    t.style.cssText = `
+      background: ${type === 'success' ? 'rgba(16,185,129,0.95)' : 'rgba(239,68,68,0.95)'};
+      color: white;
+      transform: translateY(20px);
+      opacity: 0;
+      backdrop-filter: blur(20px);
+    `;
+    t.textContent = msg;
+    document.body.appendChild(t);
+    requestAnimationFrame(() => {
+      t.style.transform = 'translateY(0)';
+      t.style.opacity = '1';
+    });
+    setTimeout(() => {
+      t.style.transform = 'translateY(20px)';
+      t.style.opacity = '0';
+      setTimeout(() => t.remove(), 300);
+    }, 2800);
+  }
+
+  function fmtPrice(n) {
+    if (n == null) return '—';
+    return '¥' + Number(n).toLocaleString('en-US', {
+      minimumFractionDigits: 0, maximumFractionDigits: 2
+    });
+  }
+
+  function fmtPct(n) {
+    if (n == null) return '—';
+    const sign = n > 0 ? '+' : '';
+    return `${sign}${Number(n).toFixed(2)}%`;
+  }
+
+  function pctClass(n) {
+    if (n == null) return 'text-[var(--text-tertiary)]';
+    return n > 0 ? 'text-emerald-600' : (n < 0 ? 'text-rose-600' : 'text-[var(--text-tertiary)]');
+  }
+
+  // 主入口：尝试从 API 加载，更新页面；失败保持 mock
+  async function bootstrapData() {
+    const indicator = document.getElementById('api-status');
+
+    // 1. 检查 API 是否在线
+    const health = await fetchAPI('/api/health');
+    if (!health) {
+      if (indicator) {
+        indicator.innerHTML = '🔴 API 离线（使用演示数据）';
+        indicator.className = 'pill amber';
+      }
+      return;
+    }
+
+    // 2. 检查监控心跳（state.json 是不是仍在被刷新）
+    const fresh = await fetchAPI('/api/health/freshness');
+    if (indicator) {
+      if (!fresh || fresh.status === 'unknown') {
+        indicator.innerHTML = '🟢 API 在线 · ⚠️ 数据状态未知';
+        indicator.className = 'pill amber';
+      } else if (fresh.status === 'ok') {
+        indicator.innerHTML = `🟢 监控运行中 · ${fresh.age_minutes} 分钟前更新`;
+        indicator.className = 'pill green';
+      } else if (fresh.status === 'delayed') {
+        indicator.innerHTML = `🟡 监控延迟 · 已 ${fresh.age_minutes} 分钟未更新`;
+        indicator.className = 'pill amber';
+      } else { // stalled
+        const hr = (fresh.age_minutes / 60).toFixed(1);
+        indicator.innerHTML = `🔴 监控可能已停 · ${hr} 小时无更新`;
+        indicator.className = 'pill rose';
+      }
+    }
+
+    // 2. 拉取 items
+    const itemsResp = await fetchAPI('/api/items');
+    if (itemsResp && itemsResp.items) {
+      updateItemCards(itemsResp.items);
+      updateHeroStats(itemsResp.count);
+    }
+
+    // 3. 拉取大盘
+    const market = await fetchAPI('/api/market');
+    if (market) {
+      updateMarketDisplay(market);
+    }
+
+    // 4. 拉取持仓 portfolio summary
+    const portfolio = await fetchAPI('/api/portfolio');
+    if (portfolio) {
+      // 可以在 hero 下方显示
+      console.log('Portfolio:', portfolio);
+    }
+
+    // 5. 拉取主品种历史，更新价格图
+    if (itemsResp && itemsResp.items[0]) {
+      const firstId = itemsResp.items[0].id;
+      const hist = await fetchAPI(`/api/items/${firstId}/history?hours=24`);
+      if (hist && hist.history.length > 5) {
+        updateChart(hist.history, itemsResp.items[0]);
+      }
+    }
+  }
+
+  function updateItemCards(items) {
+    const cardsContainer = document.querySelectorAll('.glass-card[data-skin-card]');
+    items.slice(0, cardsContainer.length).forEach((item, i) => {
+      const card = cardsContainer[i];
+      if (!card) return;
+      card.querySelector('[data-name]').textContent = item.short_name || item.name;
+      card.querySelector('[data-price]').textContent = fmtPrice(item.price);
+      const pctEl = card.querySelector('[data-today-pct]');
+      pctEl.textContent = fmtPct(item.today_pct);
+      pctEl.className = `text-sm font-medium ${pctClass(item.today_pct)}`;
+    });
+  }
+
+  function updateHeroStats(itemCount) {
+    const stats = document.querySelectorAll('[data-hero-stat]');
+    if (stats[0]) stats[0].firstChild.textContent = itemCount;
+  }
+
+  function updateMarketDisplay(market) {
+    // 顶部 nav 边可加大盘指数显示
+    const el = document.getElementById('market-pill');
+    if (el) {
+      const sign = market.current_change_pct > 0 ? '+' : '';
+      el.innerHTML = `📈 大盘 ${market.current_index?.toFixed(2)} (${sign}${market.current_change_pct?.toFixed(2)}%)`;
+    }
+  }
+
+  function updateChart(history, item) {
+    if (!history || history.length < 3) return;
+    const prices = history.map(h => h.price).filter(p => p != null);
+    if (prices.length < 3) return;
+
+    const min = Math.min(...prices) * 0.99;
+    const max = Math.max(...prices) * 1.01;
+    const W = 800, H = 360;
+    const xStep = W / (prices.length - 1);
+    const yScale = p => H - ((p - min) / (max - min)) * H;
+
+    let d = `M 0,${yScale(prices[0])}`;
+    for (let i = 1; i < prices.length; i++) {
+      const x = i * xStep;
+      const y = yScale(prices[i]);
+      const cx = x - xStep / 2;
+      const cy = (yScale(prices[i - 1]) + y) / 2;
+      d += ` Q ${cx},${cy} ${x},${y}`;
+    }
+    const dArea = d + ` L ${W},${H} L 0,${H} Z`;
+
+    const stroke = document.getElementById('chart-stroke');
+    const area = document.querySelector('.chart-area');
+    if (stroke) stroke.setAttribute('d', d);
+    if (area) area.setAttribute('d', dArea);
+
+    // 更新卡片标题
+    const titleEl = document.querySelector('[data-chart-title]');
+    if (titleEl) titleEl.textContent = item.name || item.short_name;
+    const priceEl = document.querySelector('[data-chart-price]');
+    if (priceEl) priceEl.textContent = fmtPrice(prices[prices.length - 1]);
+    const pctEl = document.querySelector('[data-chart-pct]');
+    if (pctEl) {
+      pctEl.textContent = fmtPct(item.today_pct);
+      pctEl.className = `text-sm font-medium ${pctClass(item.today_pct)}`;
+    }
+  }
+
+  // 启动 + 每 30 秒刷新一次
+  bootstrapData();
+  setInterval(bootstrapData, 30000);
+
+  /* ============================================================
+     页面切换（multi-page SPA）
+     ============================================================ */
+  function switchPage(target) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.getElementById('page-' + target)?.classList.add('active');
+    document.querySelectorAll('.nav-link').forEach(b => b.classList.toggle('active', b.dataset.page === target));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    if (target === 'charts')    loadChartsPage();
+    if (target === 'positions') loadPositionsPage();
+    if (target === 'ai')        loadAIPage();
+    if (target === 'settings')  loadSettingsPage();
+  }
+  document.querySelectorAll('[data-page]').forEach(el => {
+    el.addEventListener('click', () => switchPage(el.dataset.page));
+  });
+
+  /* ============================================================
+     Charts 页：品种选择 + 折线/K线 + 时间范围 + 成交量
+     ============================================================ */
+  let chartState = { itemId: null, type: 'line', hours: 24 };
+
+  async function loadChartsPage() {
+    const itemsResp = await fetchAPI('/api/items');
+    if (!itemsResp) return;
+    const sel = document.getElementById('chart-item-select');
+    sel.innerHTML = itemsResp.items.map(it =>
+      `<option value="${it.id}">${it.short_name || it.name}</option>`
+    ).join('');
+    if (!chartState.itemId) chartState.itemId = itemsResp.items[0]?.id;
+    sel.value = chartState.itemId;
+    sel.onchange = () => { chartState.itemId = sel.value; renderChart2(); };
+
+    document.querySelectorAll('.chart-type-btn').forEach(b => {
+      b.onclick = () => {
+        document.querySelectorAll('.chart-type-btn').forEach(x => x.classList.remove('active'));
+        b.classList.add('active');
+        chartState.type = b.dataset.type;
+        renderChart2();
+      };
+    });
+    document.querySelectorAll('.chart-range-btn').forEach(b => {
+      b.onclick = () => {
+        document.querySelectorAll('.chart-range-btn').forEach(x => x.classList.remove('active'));
+        b.classList.add('active');
+        chartState.hours = parseInt(b.dataset.hours);
+        renderChart2();
+      };
+    });
+    document.getElementById('chart-refresh').onclick = renderChart2;
+    renderChart2();
+  }
+
+  async function renderChart2() {
+    if (!chartState.itemId) return;
+    const [itemResp, histResp] = await Promise.all([
+      fetchAPI(`/api/items/${chartState.itemId}`),
+      fetchAPI(`/api/items/${chartState.itemId}/history?hours=${chartState.hours}`)
+    ]);
+    if (!itemResp || !histResp) return;
+
+    document.getElementById('chart2-title').textContent = itemResp.name || itemResp.short_name;
+    document.getElementById('chart2-stage').textContent = itemResp.current_stage || itemResp.phase || '—';
+    document.getElementById('chart2-meta').textContent =
+      `${itemResp.phase || ''} · 最近 ${chartState.hours}h · 共 ${histResp.count} 条数据点`;
+    document.getElementById('chart2-price').textContent = fmtPrice(itemResp.price);
+    const pctEl = document.getElementById('chart2-pct');
+    pctEl.textContent = fmtPct(itemResp.today_pct) + ' 今日';
+    pctEl.className = `text-sm font-medium ${pctClass(itemResp.today_pct)}`;
+
+    const points = histResp.history.filter(h => h.price != null);
+    if (points.length < 2) {
+      document.getElementById('chart2-content').innerHTML =
+        `<text x="400" y="160" text-anchor="middle" fill="#86868B" font-size="14">数据点不足，等监控积累...</text>`;
+      return;
+    }
+    const W = 800, H = 320;
+    const prices = points.map(p => p.price);
+    const min = Math.min(...prices) * 0.998;
+    const max = Math.max(...prices) * 1.002;
+    const xStep = W / (points.length - 1);
+    const yScale = p => H - ((p - min) / (max - min)) * H;
+
+    let content = '';
+    // 网格线
+    document.getElementById('chart2-grid').innerHTML = `
+      <line x1="0" y1="${H*0.25}" x2="${W}" y2="${H*0.25}"/>
+      <line x1="0" y1="${H*0.5}"  x2="${W}" y2="${H*0.5}"/>
+      <line x1="0" y1="${H*0.75}" x2="${W}" y2="${H*0.75}"/>
+    `;
+
+    if (chartState.type === 'line') {
+      // 折线图
+      let d = `M 0,${yScale(prices[0])}`;
+      for (let i = 1; i < prices.length; i++) {
+        const x = i * xStep;
+        const y = yScale(prices[i]);
+        const cx = x - xStep / 2;
+        const cy = (yScale(prices[i - 1]) + y) / 2;
+        d += ` Q ${cx},${cy} ${x},${y}`;
+      }
+      const dArea = d + ` L ${W},${H} L 0,${H} Z`;
+      content = `
+        <path d="${dArea}" fill="url(#ch2Area)"/>
+        <path d="${d}" fill="none" stroke="url(#ch2Grad)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      `;
+    } else {
+      // K线图（用每小时聚合 OHLC，每 6 个 10min 点 = 1 小时）
+      const bars = [];
+      const groupSize = Math.max(1, Math.floor(points.length / 30));
+      for (let i = 0; i < points.length; i += groupSize) {
+        const slice = points.slice(i, i + groupSize);
+        const sp = slice.map(p => p.price);
+        bars.push({
+          x: i * xStep,
+          width: groupSize * xStep,
+          open: sp[0], high: Math.max(...sp), low: Math.min(...sp), close: sp[sp.length-1]
+        });
+      }
+      content = bars.map(b => {
+        const up = b.close >= b.open;
+        const color = up ? '#10B981' : '#EF4444';
+        const bodyTop = yScale(Math.max(b.open, b.close));
+        const bodyBot = yScale(Math.min(b.open, b.close));
+        const wickTop = yScale(b.high);
+        const wickBot = yScale(b.low);
+        const cx = b.x + b.width / 2;
+        return `
+          <line x1="${cx}" y1="${wickTop}" x2="${cx}" y2="${wickBot}" stroke="${color}" stroke-width="1"/>
+          <rect x="${b.x + b.width*0.15}" y="${bodyTop}" width="${b.width*0.7}" height="${Math.max(2, bodyBot-bodyTop)}" fill="${color}"/>
+        `;
+      }).join('');
+    }
+    document.getElementById('chart2-content').innerHTML = content;
+
+    // 成交量 — 柱子中心对齐数据点 x（与折线顶点 + 十字线对齐）
+    const vols = points.map(p => p.today_volume || 0);
+    const maxVol = Math.max(...vols, 1);
+    const VW = 800, VH = 80;
+    const vxStep = VW / Math.max(1, vols.length - 1);
+    const barW = vxStep * 0.7;        // 柱宽
+    const halfBar = barW / 2;
+    const volBars = points.map((p, i) => {
+      const v = p.today_volume || 0;
+      const h = (v / maxVol) * VH * 0.95;
+      const isUp = i > 0 && p.price >= points[i-1].price;
+      const color = isUp ? '#10B981' : '#EF4444';
+      const cx = i * vxStep;          // 数据点 x = 柱子中心
+      return `<rect x="${cx - halfBar}" y="${VH-h}" width="${barW}" height="${h}" fill="${color}" opacity="0.6"/>`;
+    }).join('');
+    document.getElementById('chart2-volume-content').innerHTML = volBars;
+
+    // X 轴
+    const ts = points.filter((_, i) => i % Math.max(1, Math.floor(points.length/5)) === 0);
+    document.getElementById('chart2-xaxis').innerHTML = ts.map(p => {
+      const d = new Date(p.t);
+      const hh = d.getHours().toString().padStart(2,'0');
+      const mm = d.getMinutes().toString().padStart(2,'0');
+      return `<span>${hh}:${mm}</span>`;
+    }).join('');
+
+    // 保存 hover 状态供 mousemove handler 用
+    _chartHoverState = {
+      points, xStep, yScale, W, H, VH,
+      itemName: itemResp.name || itemResp.short_name,
+    };
+    setupChartHover();
+  }
+
+  // ============================================================
+  // 走势图 hover：跟随鼠标的十字线 + 浮动 tooltip
+  // ============================================================
+  let _chartHoverState = null;
+
+  function setupChartHover() {
+    const wrap = document.getElementById('chart-hover-wrap');
+    if (!wrap || wrap._hoverWired) return;
+    wrap._hoverWired = true;
+
+    const tooltip   = document.getElementById('chart-tooltip');
+    const crosshair = document.getElementById('chart2-crosshair');
+    const volCross  = document.getElementById('chart2-vol-crosshair');
+    const dot       = document.getElementById('chart2-dot');
+
+    wrap.addEventListener('mousemove', (e) => {
+      const st = _chartHoverState;
+      if (!st || !st.points?.length) return;
+
+      const rect = wrap.getBoundingClientRect();
+      const relX = e.clientX - rect.left;
+      const relY = e.clientY - rect.top;
+
+      // 算最近的数据点 idx
+      let idx = Math.round((relX / rect.width) * (st.points.length - 1));
+      idx = Math.max(0, Math.min(st.points.length - 1, idx));
+      const p = st.points[idx];
+      if (p == null || p.price == null) return;
+
+      // 在 viewBox 坐标里画十字线 + 高亮点
+      const xVB = idx * st.xStep;
+      const yVB = st.yScale(p.price);
+
+      crosshair.setAttribute('x1', xVB);
+      crosshair.setAttribute('x2', xVB);
+      crosshair.setAttribute('opacity', '0.6');
+
+      volCross.setAttribute('x1', xVB);
+      volCross.setAttribute('x2', xVB);
+      volCross.setAttribute('opacity', '0.6');
+
+      dot.setAttribute('cx', xVB);
+      dot.setAttribute('cy', yVB);
+      dot.setAttribute('opacity', '1');
+
+      // Tooltip 内容
+      const d  = new Date(p.t);
+      const dateStr = d.toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' });
+      const timeStr = d.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false });
+      const tPctClr = p.today_pct == null ? '#9CA3AF' : (p.today_pct >= 0 ? '#34D399' : '#FB7185');
+      const wPctClr = p.week_pct == null ? '#9CA3AF' : (p.week_pct >= 0 ? '#34D399' : '#FB7185');
+      tooltip.innerHTML = `
+        <div style="opacity:0.7; font-size:10px; margin-bottom:4px;">${dateStr} ${timeStr}</div>
+        <div>价格 <span style="float:right; font-weight:600; margin-left:16px;">${fmtPrice(p.price)}</span></div>
+        ${p.today_pct != null ? `<div>今日 <span style="float:right; color:${tPctClr}; font-weight:600;">${p.today_pct >= 0 ? '+' : ''}${p.today_pct.toFixed(2)}%</span></div>` : ''}
+        ${p.week_pct != null ? `<div>本周 <span style="float:right; color:${wPctClr}; font-weight:600;">${p.week_pct >= 0 ? '+' : ''}${p.week_pct.toFixed(2)}%</span></div>` : ''}
+        <div>成交 <span style="float:right; font-weight:600;">${p.today_volume ?? 0}</span></div>
+        ${p.market_index != null ? `<div>大盘 <span style="float:right; opacity:0.7;">${p.market_index.toFixed(1)}</span></div>` : ''}
+      `;
+
+      // 定位 tooltip：默认右下，靠右边缘时翻转到左边
+      const tipW = 160, tipH = 110, gap = 12;
+      let tx = relX + gap;
+      let ty = relY + gap;
+      if (tx + tipW > rect.width)  tx = relX - tipW - gap;
+      if (ty + tipH > rect.height) ty = relY - tipH - gap;
+      tooltip.style.left = `${tx}px`;
+      tooltip.style.top  = `${ty}px`;
+      tooltip.style.opacity = '1';
+    });
+
+    wrap.addEventListener('mouseleave', () => {
+      tooltip.style.opacity   = '0';
+      crosshair.setAttribute('opacity', '0');
+      volCross.setAttribute('opacity', '0');
+      dot.setAttribute('opacity', '0');
+    });
+  }
+
+  /* ============================================================
+     Positions 页
+     ============================================================ */
+  async function loadPositionsPage() {
+    const [portfolio, itemsResp] = await Promise.all([
+      fetchAPI('/api/portfolio'),
+      fetchAPI('/api/items')
+    ]);
+
+    if (portfolio && !portfolio.empty) {
+      const pnlClass = portfolio.total_pnl >= 0 ? 'text-emerald-600' : 'text-rose-600';
+      document.getElementById('portfolio-content').innerHTML = `
+        <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+          <div><div class="text-xs text-[var(--text-tertiary)]">总成本</div><div class="text-2xl font-semibold">${fmtPrice(portfolio.total_cost)}</div></div>
+          <div><div class="text-xs text-[var(--text-tertiary)]">总市值</div><div class="text-2xl font-semibold">${fmtPrice(portfolio.total_value)}</div></div>
+          <div><div class="text-xs text-[var(--text-tertiary)]">浮盈</div><div class="text-2xl font-semibold ${pnlClass}">${fmtPrice(portfolio.total_pnl)} (${fmtPct(portfolio.total_pnl_pct*100)})</div></div>
+        </div>
+        ${portfolio.warnings?.length ? `
+          <div class="mt-4 p-3 rounded-xl bg-amber-50 text-sm text-amber-800">
+            ${portfolio.warnings.map(w => `<div>${w}</div>`).join('')}
+          </div>
+        ` : ''}
+      `;
+    }
+
+    if (itemsResp) {
+      document.getElementById('positions-list').innerHTML = itemsResp.items.map(it => {
+        const pos = it.position;
+        const legacy = it.legacy;
+        return `
+          <div class="rounded-2xl p-5 bg-white border border-black/5">
+            <div class="font-medium mb-3">${it.short_name || it.name}</div>
+            ${pos ? `
+              <div class="text-sm space-y-1 mb-3">
+                <div>新仓：<strong>${(pos.total_qty_pct*100).toFixed(0)}%</strong> @均价 ${fmtPrice(pos.avg_entry_price)}</div>
+                ${pos.pnl_pct != null ? `<div class="${pctClass(pos.pnl_pct*100)}">浮盈 ${fmtPct(pos.pnl_pct*100)}</div>` : ''}
+                <div class="text-xs text-[var(--text-tertiary)]">最高 ${fmtPrice(pos.highest_since_first_entry)}  ·  止盈已执行 ${(pos.tp_executed||[]).join(', ') || '无'}</div>
+              </div>
+            ` : `<div class="text-sm text-[var(--text-tertiary)] mb-3">新仓：无</div>`}
+            ${legacy ? `
+              <div class="mt-3 pt-3 border-t border-black/5 text-sm">
+                <div>套牢仓：<strong>${legacy.quantity} 把</strong> @均价 ${fmtPrice(legacy.avg_entry_price)}</div>
+                ${legacy.pnl_pct != null ? `<div class="${pctClass(legacy.pnl_pct*100)}">浮亏 ${fmtPct(legacy.pnl_pct*100)}</div>` : ''}
+              </div>
+            ` : ''}
+
+            <!-- 操作表单 -->
+            <div class="mt-3 pt-3 border-t border-black/5">
+              <div class="flex items-center gap-2 mb-2">
+                <select class="text-xs px-2 py-1.5 rounded-lg border border-black/10 bg-white" data-action>
+                  <option value="buy">加仓</option>
+                  <option value="sell">卖出</option>
+                  <option value="legacy">设套牢仓</option>
+                  <option value="legacy_remove">移除套牢仓</option>
+                  <option value="clear">清空新仓</option>
+                </select>
+                <input type="number" step="0.01" min="0" placeholder="价格 ¥" class="text-xs px-2 py-1.5 rounded-lg border border-black/10 w-24" data-price>
+                <input type="number" step="1" min="0" max="100" placeholder="%" class="text-xs px-2 py-1.5 rounded-lg border border-black/10 w-16" data-pct>
+                <button class="text-xs px-3 py-1.5 rounded-lg bg-indigo-600 text-white font-medium hover:bg-indigo-700 transition" onclick="submitPositionAction('${it.id}', this)">执行</button>
+              </div>
+              <div class="text-[11px] text-[var(--text-tertiary)]">
+                加仓/卖出：% = 仓位百分比 (如 30 = 30%)。设套牢仓：% = 数量（把）。
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+  }
+
+  // 仓位操作（加仓/卖出/套牢/清空）
+  async function submitPositionAction(itemId, btn) {
+    const card = btn.closest('.rounded-2xl');
+    const action = card.querySelector('[data-action]').value;
+    const price = parseFloat(card.querySelector('[data-price]').value);
+    const pct   = parseFloat(card.querySelector('[data-pct]').value);
+
+    let path, body, method = 'POST';
+    if (action === 'buy') {
+      if (!price || !pct) return showToast('价格和 % 都必填', 'error');
+      path = `/api/positions/${itemId}/buy`;
+      body = { price, qty_pct: pct / 100 };
+    } else if (action === 'sell') {
+      if (!price || !pct) return showToast('价格和 % 都必填', 'error');
+      path = `/api/positions/${itemId}/sell`;
+      body = { price, qty_pct: pct / 100 };
+    } else if (action === 'legacy') {
+      if (!price || !pct) return showToast('均价和数量都必填', 'error');
+      path = `/api/positions/${itemId}/legacy`;
+      body = { quantity: pct, avg_entry_price: price, action: 'set' };
+    } else if (action === 'legacy_remove') {
+      path = `/api/positions/${itemId}/legacy`;
+      body = { action: 'remove' };
+    } else if (action === 'clear') {
+      if (!confirm('确定清空新仓所有档？此操作不可逆。')) return;
+      path = `/api/positions/${itemId}/clear`;
+      body = null;
+    }
+
+    btn.disabled = true; btn.textContent = '...';
+    const res = await apiSend(path, method, body);
+    btn.disabled = false; btn.textContent = '执行';
+
+    if (res.ok) {
+      showToast(`${action === 'buy' ? '加仓' : action === 'sell' ? '卖出' : '操作'}成功`);
+      loadPositionsPage();   // 刷新
+    } else {
+      showToast('失败：' + res.error, 'error');
+    }
+  }
+
+  /* ============================================================
+     Settings 页
+     ============================================================ */
+  async function loadSettingsPage() {
+    // 先拉心跳
+    const fresh = await fetchAPI('/api/health/freshness');
+    const card = document.getElementById('freshness-card');
+    const txt  = document.getElementById('freshness-status-text');
+    const age  = document.getElementById('freshness-age');
+    const det  = document.getElementById('freshness-detail');
+    const hint = document.getElementById('freshness-hint');
+    if (fresh && card && txt) {
+      const min = fresh.age_minutes;
+      if (fresh.status === 'ok') {
+        card.style.background = 'rgba(34,197,94,0.04)';
+        card.style.borderColor = 'rgba(34,197,94,0.2)';
+        txt.innerHTML = '✅ 监控运行正常';
+        txt.style.color = '#16A34A';
+        age.textContent = min + ' 分钟前';
+        hint.style.display = 'none';
+      } else if (fresh.status === 'delayed') {
+        card.style.background = 'rgba(245,158,11,0.06)';
+        card.style.borderColor = 'rgba(245,158,11,0.3)';
+        txt.innerHTML = '⚠️ 监控延迟';
+        txt.style.color = '#D97706';
+        age.textContent = min + ' 分钟前';
+        hint.style.display = 'block';
+        hint.style.color = '#D97706';
+        hint.innerHTML = '正常 fast 任务每 10 分钟一次。如果只是偶尔延迟可忽略，持续 30 min+ 请手动跑 <code class="bg-white px-1 py-0.5 rounded">python monitor_fast.py</code> 看报错。';
+      } else if (fresh.status === 'stalled') {
+        card.style.background = 'rgba(239,68,68,0.06)';
+        card.style.borderColor = 'rgba(239,68,68,0.3)';
+        const hr = (min / 60).toFixed(1);
+        txt.innerHTML = '🚨 监控可能已停';
+        txt.style.color = '#DC2626';
+        age.textContent = hr + ' 小时前';
+        hint.style.display = 'block';
+        hint.style.color = '#DC2626';
+        hint.innerHTML = '排查：① <code class="bg-white px-1 rounded">schtasks /Query /TN "CS2 Monitor Fast" /V /FO LIST</code> 看任务状态<br/>② 看 <code class="bg-white px-1 rounded">D:\\claude\\xuanxiao\\logs\\monitor_fast.log</code> 末尾报错<br/>③ 手动 <code class="bg-white px-1 rounded">python monitor_fast.py</code> 复现';
+      } else {
+        txt.innerHTML = '❓ 状态未知（无数据）';
+        age.textContent = '—';
+      }
+      det.textContent = '最新数据点：' + (fresh.latest_data_time || '—') + (fresh.latest_data_item ? ' · 来源：' + fresh.latest_data_item : '');
+    }
+
+    const state = await fetchAPI('/api/state');
+    if (!state) return;
+
+    const tokens = state.global?.pushplus_tokens || [];
+    document.getElementById('tokens-list').innerHTML = tokens.length ? tokens.map(t => `
+      <div class="flex items-center justify-between p-3 rounded-xl bg-black/[0.03]">
+        <div>
+          <div class="font-medium">${t.name}</div>
+          <div class="text-xs text-[var(--text-tertiary)] font-mono">${t.token.slice(0,4)}****${t.token.slice(-4)}</div>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="pill green" style="font-size: 11px;">已激活</span>
+          <button onclick="deleteToken('${t.name.replace(/'/g, "\\'")}')" class="text-xs text-rose-600 hover:bg-rose-50 px-2 py-1 rounded transition">删除</button>
+        </div>
+      </div>
+    `).join('') : '<div class="text-sm text-[var(--text-tertiary)]">暂无 token</div>';
+
+    const items = state.items || [];
+    document.getElementById('settings-items-list').innerHTML = items.map(it => `
+      <div class="flex items-center justify-between p-3 rounded-xl bg-black/[0.03]">
+        <div class="flex-1 min-w-0">
+          <div class="font-medium">${it.short_name || it.name}</div>
+          <div class="text-xs text-[var(--text-tertiary)] truncate">${it.id}  ·  ${it.history?.length || 0} 条历史</div>
+        </div>
+        <div class="flex items-center gap-2 ml-3">
+          <a href="${it.url}" target="_blank" class="text-xs text-indigo-600 hover:underline">SteamDT ↗</a>
+          <button onclick="deleteItem('${it.id}', '${(it.short_name || it.name).replace(/'/g, "\\'")}')" class="text-xs text-rose-600 hover:bg-rose-50 px-2 py-1 rounded transition">删除</button>
+        </div>
+      </div>
+    `).join('');
+
+    // 板块下拉选项（写一次就好）
+    const sel = document.getElementById('new-item-sector');
+    if (sel && sel.options.length <= 1) {
+      const sectorResp = await fetchAPI('/api/sectors/options');
+      if (sectorResp?.sectors) {
+        sectorResp.sectors.forEach(s => {
+          const opt = document.createElement('option');
+          opt.value = s; opt.textContent = s;
+          sel.appendChild(opt);
+        });
+      }
+    }
+
+    const fund = state.global?.fundamentals || {};
+    const methodBadge = fund.last_check_method === 'llm'
+      ? '<span class="pill" style="background:rgba(99,102,241,0.1);color:#6366F1;font-size:11px;">LLM 分析</span>'
+      : (fund.last_check_method === 'keyword'
+          ? '<span class="pill" style="background:rgba(0,0,0,0.06);color:#6E6E73;font-size:11px;">关键词</span>'
+          : '');
+    const updates = fund.recent_updates || [];
+    const biasColor = (b) => {
+      if (b === 'positive') return 'text-emerald-700 bg-emerald-50';
+      if (b === 'negative') return 'text-rose-700 bg-rose-50';
+      if (b === 'emergency') return 'text-red-700 bg-red-100';
+      return 'text-slate-600 bg-slate-50';
+    };
+    const updatesHtml = updates.length ? `
+      <details class="mt-4">
+        <summary class="cursor-pointer text-indigo-600 hover:underline text-sm font-medium">
+          📋 查看逐条分析（${updates.length} 条）
+        </summary>
+        <div class="mt-3 space-y-2 max-h-96 overflow-y-auto pr-2">
+          ${updates.map(u => `
+            <div class="p-3 rounded-xl border border-black/5 bg-white">
+              <div class="flex items-start justify-between gap-2 mb-1">
+                <div class="text-sm font-medium flex-1 min-w-0">${u.title || '—'}</div>
+                <span class="text-xs px-2 py-0.5 rounded-full ${biasColor(u.impact)} whitespace-nowrap">${u.impact || '—'}</span>
+              </div>
+              <div class="text-xs text-[var(--text-tertiary)] mb-1">
+                ${u.date || '—'}  ·  ${u.type || '—'}  ${u.confidence != null ? `·  置信 ${(u.confidence*100).toFixed(0)}%` : ''}
+              </div>
+              ${u.rationale ? `<div class="text-xs text-[var(--text-secondary)] mt-1">💭 ${u.rationale}</div>` : ''}
+              ${u.url ? `<a href="${u.url}" target="_blank" class="text-xs text-indigo-600 hover:underline mt-1 inline-block">查看原文 ↗</a>` : ''}
+            </div>
+          `).join('')}
+        </div>
+      </details>
+    ` : '';
+
+    // bias 影响表（A+B 增强）
+    const BIAS_IMPACT = {
+      'positive':                 { buy_pri: '+1', stop_mult: '×1.0', tp_mult: '×1.1', desc: '正面：信号优先级+1，止盈略放宽' },
+      'positive_with_whale_buy':  { buy_pri: '+1', stop_mult: '×1.1', tp_mult: '×1.3', desc: '正面+庄家：止损放宽 10%，止盈第三档放奔跑 30%' },
+      'neutral_positive':         { buy_pri: '+0.5', stop_mult: '×1.0', tp_mult: '×1.05', desc: '偏中性正向：略偏多' },
+      'neutral':                  { buy_pri: '0', stop_mult: '×1.0', tp_mult: '×1.0', desc: '中性：所有阈值不变' },
+      'negative':                 { buy_pri: '-1', stop_mult: '×0.7', tp_mult: '×0.8', desc: '负面：止损收紧 30%，止盈提早 20%' },
+      'emergency':                { buy_pri: '屏蔽', stop_mult: '×0.5', tp_mult: '×0.6', desc: '紧急：BUY 完全屏蔽，止损减半' },
+    };
+    const impact = BIAS_IMPACT[fund.bias] || BIAS_IMPACT['neutral'];
+    const impactHtml = `
+      <div class="mt-3 p-3 rounded-xl bg-gradient-to-r from-indigo-50/50 to-purple-50/30 border border-indigo-100/50">
+        <div class="text-xs font-medium text-[var(--text-secondary)] mb-2">📊 当前 bias 实际影响（A+B 调节器）</div>
+        <div class="grid grid-cols-3 gap-3 text-xs">
+          <div>
+            <div class="text-[var(--text-tertiary)]">BUY 优先级</div>
+            <div class="font-mono font-medium ${impact.buy_pri === '屏蔽' ? 'text-rose-600' : (impact.buy_pri.startsWith('+') ? 'text-emerald-600' : 'text-slate-700')}">${impact.buy_pri}</div>
+          </div>
+          <div>
+            <div class="text-[var(--text-tertiary)]">止损阈值</div>
+            <div class="font-mono font-medium">${impact.stop_mult}</div>
+          </div>
+          <div>
+            <div class="text-[var(--text-tertiary)]">止盈阈值</div>
+            <div class="font-mono font-medium">${impact.tp_mult}</div>
+          </div>
+        </div>
+        <div class="text-xs text-[var(--text-secondary)] mt-2">${impact.desc}</div>
+      </div>
+    `;
+
+    document.getElementById('fundamentals-content').innerHTML = `
+      <div>当前 bias：<strong>${fund.bias || '未知'}</strong> ${methodBadge}</div>
+      <div>最近检查：${fund.last_check_time || '—'}</div>
+      <div>下次检查：${fund.next_check_due || '—'}</div>
+      <div class="text-[var(--text-secondary)] mt-2">${(fund.summary || '').slice(0, 400)}</div>
+      ${fund.whale_signals?.length ? `<div class="mt-3 p-3 rounded-xl bg-indigo-50/50">活跃庄家信号：${fund.whale_signals.length} 条</div>` : ''}
+      ${impactHtml}
+      ${updatesHtml}
+    `;
+
+    // 加载 LLM 配置回填
+    await loadLLMConfig();
+    // 加载调度器状态
+    await loadSchedulerStatus();
+  }
+
+  // ============================================================
+  // 调度器：状态展示 + 模式切换 + 启停 + 立即触发
+  // ============================================================
+  async function loadSchedulerStatus() {
+    const resp = await fetchAPI('/api/scheduler/status');
+    if (!resp) return;
+
+    const mode = resp.mode || 'embedded';
+    document.getElementById('sched-mode-' + mode).checked = true;
+    const badge = document.getElementById('scheduler-mode-badge');
+    if (mode === 'embedded') {
+      badge.className = 'pill green';
+      badge.textContent = resp.status?.enabled ? '🟢 嵌入式 · 运行中' : '🟡 嵌入式 · 已停';
+    } else {
+      badge.className = 'pill';
+      badge.textContent = '🔵 外部任务计划器';
+    }
+
+    // 绑定切换
+    document.querySelectorAll('input[name="sched-mode"]').forEach(r => {
+      r.onchange = async (e) => {
+        const newMode = e.target.value;
+        const res = await apiSend('/api/scheduler/mode', 'POST', { mode: newMode }, 10000);
+        if (res.ok) {
+          showToast(`已切换到 ${newMode === 'embedded' ? '嵌入式' : 'Windows 任务计划器'} 模式`);
+          loadSchedulerStatus();
+        } else {
+          showToast('切换失败：' + res.error, 'error');
+          loadSchedulerStatus();
+        }
+      };
+    });
+
+    const tasks = resp.status?.tasks || {};
+    const taskNames = ['monitor_fast', 'monitor_slow', 'daily_review'];
+    document.getElementById('scheduler-tasks').innerHTML = taskNames.map(name => {
+      const t = tasks[name] || {};
+      const runDot = t.running ? '🟢 运行中' : (resp.status?.enabled ? '⚪ 等待' : '⏸ 已停');
+      const lastOk = t.last_ok ? new Date(t.last_ok).toLocaleString('zh-CN') : '—';
+      const nextRun = t.next_run ? new Date(t.next_run).toLocaleString('zh-CN') : '—';
+      const errBadge = t.last_error ? `<span class="pill rose" style="font-size:10px;" title="${t.last_error.replace(/"/g, '&quot;')}">${t.errors} 次错误</span>` : '';
+      return `
+        <div class="p-3 rounded-xl bg-black/[0.03]">
+          <div class="flex items-center justify-between mb-1">
+            <div>
+              <span class="font-medium">${t.label || name}</span>
+              <span class="text-xs text-[var(--text-tertiary)] ml-2">${t.schedule || ''}</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="text-xs">${runDot}</span>
+              ${errBadge}
+              <button onclick="schedulerRunNow('${name}')" class="px-2 py-1 rounded-lg bg-indigo-50 text-indigo-700 text-xs font-medium hover:bg-indigo-100 transition" ${t.running ? 'disabled' : ''}>立即跑</button>
+            </div>
+          </div>
+          <div class="text-xs text-[var(--text-tertiary)]">
+            上次成功：${lastOk}  ·  下次：${nextRun}  ·  累计 ${t.runs || 0} 次
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  async function schedulerToggle(start) {
+    const span = document.getElementById('scheduler-control-result');
+    span.textContent = start ? '启动中...' : '停止中...';
+    const path = start ? '/api/scheduler/start' : '/api/scheduler/stop';
+    const res = await apiSend(path, 'POST', null, 10000);
+    if (res.ok) {
+      span.textContent = start ? '✓ 已启动' : '✓ 已停止';
+      span.style.color = '#10B981';
+      loadSchedulerStatus();
+    } else {
+      span.textContent = '✗ ' + res.error;
+      span.style.color = '#EF4444';
+    }
+  }
+
+  async function schedulerRunNow(name) {
+    showToast(`触发 ${name} 中...（首次扫描可能 30-60s）`);
+    const res = await apiSend(`/api/scheduler/run/${name}`, 'POST', null, 180000);
+    if (res.ok) {
+      showToast(`✓ ${name} 已完成`);
+      loadSchedulerStatus();
+      bootstrapData();   // 顺便刷新主页数据
+    } else {
+      showToast('失败：' + res.error, 'error');
+    }
+  }
+
+  // ============================================================
+  // LLM 配置 / 测试 / 立即分类
+  // ============================================================
+  async function loadLLMConfig() {
+    const cfg = await fetchAPI('/api/llm/config');
+    if (!cfg) return;
+    document.getElementById('llm-provider').value = cfg.provider || 'anthropic';
+    document.getElementById('llm-model').value    = cfg.model || '';
+    document.getElementById('llm-base-url').value = cfg.base_url || '';
+    // 已配置时，placeholder 提示，但不显示明文
+    const keyInput = document.getElementById('llm-api-key');
+    if (cfg.configured) {
+      keyInput.placeholder = `已配置: ${cfg.api_key_masked} (留空保持不变)`;
+      keyInput.value = '';
+    } else {
+      keyInput.placeholder = 'sk-... (脱敏存储于 state.json)';
+    }
+    const mods = cfg.enabled_modules || {};
+    document.getElementById('llm-mod-news').checked     = !!mods.news_classification;
+    const r = document.getElementById('llm-mod-review');   if (r) r.checked = !!mods.daily_review;
+    const p = document.getElementById('llm-mod-proposal'); if (p) p.checked = !!mods.param_proposal;
+  }
+
+  async function saveLLMConfig() {
+    const provider = document.getElementById('llm-provider').value;
+    const model    = document.getElementById('llm-model').value.trim();
+    const apiKey   = document.getElementById('llm-api-key').value.trim();
+    const baseUrl  = document.getElementById('llm-base-url').value.trim();
+    if (!model) return showToast('Model 必填', 'error');
+
+    const body = {
+      provider, model,
+      base_url: baseUrl,
+      api_key:  apiKey || null,    // null = 不修改
+      enabled_modules: {
+        news_classification: document.getElementById('llm-mod-news').checked,
+        daily_review:        document.getElementById('llm-mod-review')?.checked || false,
+        param_proposal:      document.getElementById('llm-mod-proposal')?.checked || false,
+      },
+    };
+    const res = await apiSend('/api/llm/config', 'POST', body);
+    if (res.ok) {
+      showToast('✓ LLM 配置已保存');
+      loadLLMConfig();
+    } else {
+      showToast('保存失败：' + res.error, 'error');
+    }
+  }
+
+  async function testLLM() {
+    const span = document.getElementById('llm-test-result');
+    span.textContent = '测试中...';
+    span.style.color = '#6E6E73';
+    const res = await apiSend('/api/llm/test', 'POST', null, 30000);   // 30s
+    if (res.ok && res.data?.ok) {
+      span.textContent = `✓ 连通 ${res.data.latency_ms}ms · ${res.data.model} · 回 "${res.data.response}"`;
+      span.style.color = '#10B981';
+    } else {
+      const err = res.data?.error || res.error || '未知错误';
+      span.textContent = `✗ ${err}`;
+      span.style.color = '#EF4444';
+    }
+  }
+
+  async function classifyNewsNow() {
+    const span = document.getElementById('llm-classify-result');
+    span.textContent = '抓 Steam News + 调 LLM...（最多约 90 秒，请耐心等）';
+    span.style.color = '#6E6E73';
+    const res = await apiSend('/api/llm/classify_news', 'POST', null, 120000);   // 120s
+    if (res.ok) {
+      const n = (res.data.items || []).length;
+      span.textContent = `✓ 分类 ${n} 条 → 综合 bias=${res.data.aggregate_bias}`;
+      span.style.color = '#10B981';
+      loadSettingsPage();   // 刷新基本面
+    } else {
+      span.textContent = `✗ ${res.error}`;
+      span.style.color = '#EF4444';
+    }
+  }
+
+  // ============================================================
+  // AI 复盘页：Shadow 收益 + AI 评论 + 参数提案
+  // ============================================================
+  async function loadAIPage() {
+    await Promise.all([
+      renderShadowSection(),
+      renderReviewsSection(),
+      renderProposalsSection(),
+    ]);
+  }
+
+  async function renderShadowSection() {
+    const stats = await fetchAPI('/api/shadow/stats');
+    const recent = await fetchAPI('/api/shadow/recent?limit=10');
+
+    if (!stats) {
+      document.getElementById('shadow-summary').innerHTML = '<span class="text-rose-600">无法读取 shadow 数据</span>';
+      return;
+    }
+
+    const labels = Object.keys(stats.stats || {});
+    const totalCount = labels.reduce((s, k) => s + (stats.stats[k].count || 0), 0);
+    const allReturns = labels.flatMap(k => Array(stats.stats[k].count).fill(stats.stats[k].avg_return));
+    const totalAvg = allReturns.length ? allReturns.reduce((a, b) => a + b, 0) / allReturns.length : 0;
+
+    document.getElementById('shadow-summary').innerHTML = `
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div>
+          <div class="text-xs text-[var(--text-tertiary)]">已评估笔数</div>
+          <div class="text-2xl font-semibold">${totalCount}</div>
+        </div>
+        <div>
+          <div class="text-xs text-[var(--text-tertiary)]">待评估（< 7 天）</div>
+          <div class="text-2xl font-semibold">${stats.pending || 0}</div>
+        </div>
+        <div>
+          <div class="text-xs text-[var(--text-tertiary)]">综合平均收益</div>
+          <div class="text-2xl font-semibold ${totalAvg >= 0 ? 'text-emerald-600' : 'text-rose-600'}">${totalCount ? (totalAvg*100).toFixed(2) + '%' : '—'}</div>
+        </div>
+        <div>
+          <div class="text-xs text-[var(--text-tertiary)]">信号种类</div>
+          <div class="text-2xl font-semibold">${labels.length}</div>
+        </div>
+      </div>
+    `;
+
+    if (!labels.length) {
+      document.getElementById('shadow-stats-table').innerHTML = '<div class="text-sm text-[var(--text-tertiary)]">还没积累足够数据。每条 BUY 推送会自动建一个影子仓位，7 天后自动评估。</div>';
+    } else {
+      document.getElementById('shadow-stats-table').innerHTML = `
+        <table class="w-full text-sm">
+          <thead class="text-xs text-[var(--text-tertiary)] uppercase">
+            <tr class="border-b border-black/5">
+              <th class="text-left py-2 pr-4">信号类型</th>
+              <th class="text-right py-2 px-2">笔数</th>
+              <th class="text-right py-2 px-2">胜率</th>
+              <th class="text-right py-2 px-2">平均收益</th>
+              <th class="text-right py-2 px-2">最大</th>
+              <th class="text-right py-2 pl-2">最小</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${labels.map(label => {
+              const s = stats.stats[label];
+              const winColor = s.win_rate >= 0.6 ? 'text-emerald-600' : (s.win_rate < 0.4 ? 'text-rose-600' : 'text-slate-700');
+              const avgColor = s.avg_return >= 0 ? 'text-emerald-600' : 'text-rose-600';
+              return `
+                <tr class="border-b border-black/5 hover:bg-black/[0.02]">
+                  <td class="py-2 pr-4 font-medium">${label}</td>
+                  <td class="text-right py-2 px-2">${s.count}</td>
+                  <td class="text-right py-2 px-2 font-medium ${winColor}">${(s.win_rate*100).toFixed(0)}%</td>
+                  <td class="text-right py-2 px-2 font-medium ${avgColor}">${(s.avg_return*100).toFixed(2)}%</td>
+                  <td class="text-right py-2 px-2 text-emerald-600">${(s.max_return*100).toFixed(1)}%</td>
+                  <td class="text-right py-2 pl-2 text-rose-600">${(s.min_return*100).toFixed(1)}%</td>
+                </tr>
+              `;
+            }).join('')}
+          </tbody>
+        </table>
+      `;
+    }
+
+    // 最近 10 笔
+    const shadows = recent?.shadows || [];
+    if (!shadows.length) {
+      document.getElementById('shadow-recent-list').innerHTML = '<div class="text-[var(--text-tertiary)]">暂无已评估记录</div>';
+    } else {
+      document.getElementById('shadow-recent-list').innerHTML = shadows.map(s => {
+        const r = s.return_7d_pct || 0;
+        const color = r >= 0 ? 'text-emerald-600' : 'text-rose-600';
+        const date = (s.exit_time || '').slice(0, 10);
+        return `
+          <div class="flex items-center justify-between p-3 rounded-xl bg-black/[0.02]">
+            <div class="flex-1 min-w-0">
+              <div class="font-medium">${s.label} · ${s.item_id}</div>
+              <div class="text-xs text-[var(--text-tertiary)]">入 ¥${s.entry_price?.toFixed(2)} → 出 ¥${s.exit_price?.toFixed(2)} · ${date}</div>
+            </div>
+            <div class="font-mono font-semibold ${color}">${(r*100).toFixed(2)}%</div>
+          </div>
+        `;
+      }).join('');
+    }
+  }
+
+  async function renderReviewsSection() {
+    const resp = await fetchAPI('/api/llm/reviews?limit=10');
+    const reviews = resp?.reviews || [];
+    if (!reviews.length) {
+      document.getElementById('ai-reviews-list').innerHTML = '<div class="text-sm text-[var(--text-tertiary)]">还没有任何 AI 复盘。在设置页勾选「每日复盘评论」+ 配 LLM key，或者点上方「立即生成一份」。</div>';
+      return;
+    }
+    document.getElementById('ai-reviews-list').innerHTML = reviews.map(r => `
+      <details class="rounded-2xl border border-black/5 bg-white/60" ${r === reviews[0] ? 'open' : ''}>
+        <summary class="cursor-pointer p-4 flex items-center justify-between">
+          <div class="font-medium">${r.date || (r.ts || '').slice(0,10)} 复盘</div>
+          <span class="text-xs text-[var(--text-tertiary)]">${r.model}</span>
+        </summary>
+        <div class="px-4 pb-4 text-sm leading-relaxed text-[var(--text-secondary)] whitespace-pre-wrap">${(r.text || '').replace(/</g, '&lt;')}</div>
+      </details>
+    `).join('');
+  }
+
+  async function generateDailyReviewNow() {
+    const list = document.getElementById('ai-reviews-list');
+    list.insertAdjacentHTML('afterbegin', '<div id="review-loading" class="p-3 rounded-xl bg-indigo-50 text-sm text-indigo-700">⏳ AI 正在写复盘...（约 15–60 秒）</div>');
+    const res = await apiSend('/api/llm/daily_review', 'POST', null, 120000);
+    document.getElementById('review-loading')?.remove();
+    if (res.ok) {
+      showToast('✓ 复盘已生成');
+      renderReviewsSection();
+    } else {
+      showToast('生成失败：' + res.error, 'error');
+    }
+  }
+
+  async function renderProposalsSection() {
+    const resp = await fetchAPI('/api/llm/proposals');
+    const proposals = resp?.proposals || [];
+    if (!proposals.length) {
+      document.getElementById('proposals-list').innerHTML = '<div class="text-sm text-[var(--text-tertiary)]">尚无提案。点上方「立即生成一批」试一下（需要 shadow 已评估 ≥5 笔）。</div>';
+      return;
+    }
+    document.getElementById('proposals-list').innerHTML = proposals.map(p => {
+      const statusBadge = {
+        pending:  '<span class="pill amber" style="font-size:11px;">待审批</span>',
+        applied:  '<span class="pill green" style="font-size:11px;">已应用</span>',
+        rejected: '<span class="pill" style="background:rgba(0,0,0,0.06);color:#6E6E73;font-size:11px;">已拒绝</span>',
+      }[p.status] || '';
+      const direction = p.proposed_value > p.current_value ? '↑ 放宽' : '↓ 收紧';
+      const dirColor = p.proposed_value > p.current_value ? 'text-emerald-600' : 'text-amber-600';
+      return `
+        <div class="rounded-2xl p-4 border border-black/5 bg-white/60">
+          <div class="flex items-start justify-between gap-3 mb-2">
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2 mb-1">
+                <span class="font-medium">${p.field}</span>
+                <span class="text-xs text-[var(--text-tertiary)]">${p.scope}${p.item_id ? ' · ' + p.item_id : ''}</span>
+                ${statusBadge}
+              </div>
+              <div class="font-mono text-sm">
+                <span class="text-[var(--text-tertiary)]">${p.current_value}</span>
+                <span class="${dirColor} mx-2">→ ${direction} →</span>
+                <span class="font-semibold">${p.proposed_value}</span>
+              </div>
+            </div>
+            <div class="text-xs text-[var(--text-tertiary)] whitespace-nowrap">置信 ${(p.confidence*100).toFixed(0)}%</div>
+          </div>
+          <div class="text-sm text-[var(--text-secondary)] mb-3">💡 ${p.rationale}</div>
+          ${p.status === 'pending' ? `
+            <div class="flex items-center gap-2">
+              <button onclick="applyProposal('${p.id}')" class="px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-medium hover:bg-emerald-700 transition">✓ 应用</button>
+              <button onclick="rejectProposal('${p.id}')" class="px-3 py-1.5 rounded-lg bg-rose-50 text-rose-700 text-xs font-medium hover:bg-rose-100 transition">✗ 拒绝</button>
+            </div>
+          ` : (p.status === 'applied' ? `
+            <div class="text-xs text-[var(--text-tertiary)]">应用于 ${(p.applied_at||'').slice(0,16)} · 原值 ${p.original_value}</div>
+          ` : '')}
+        </div>
+      `;
+    }).join('');
+  }
+
+  async function generateProposalsNow() {
+    const list = document.getElementById('proposals-list');
+    list.insertAdjacentHTML('afterbegin', '<div id="prop-loading" class="p-3 rounded-xl bg-indigo-50 text-sm text-indigo-700">⏳ AI 正在分析 shadow 数据...（约 15–60 秒）</div>');
+    const res = await apiSend('/api/llm/propose_params', 'POST', null, 120000);
+    document.getElementById('prop-loading')?.remove();
+    if (res.ok) {
+      const n = (res.data.proposals || []).length;
+      showToast(n ? `✓ 生成 ${n} 条新提案` : '✓ AI 认为暂无需调整');
+      renderProposalsSection();
+    } else {
+      showToast('生成失败：' + res.error, 'error');
+    }
+  }
+
+  async function applyProposal(id) {
+    if (!confirm('确认应用这条提案？原值会自动备份。')) return;
+    const res = await apiSend(`/api/llm/proposals/${id}/apply`, 'POST', null, 10000);
+    if (res.ok) { showToast('✓ 已应用'); renderProposalsSection(); }
+    else showToast('失败：' + res.error, 'error');
+  }
+
+  async function rejectProposal(id) {
+    const res = await apiSend(`/api/llm/proposals/${id}/reject`, 'POST', null, 10000);
+    if (res.ok) { showToast('已拒绝'); renderProposalsSection(); }
+    else showToast('失败：' + res.error, 'error');
+  }
+
+  // ============================================================
+  // 设置页：token + 品种 增删
+  // ============================================================
+  async function addToken() {
+    const name  = document.getElementById('new-token-name').value.trim();
+    const token = document.getElementById('new-token-value').value.trim();
+    if (!name || !token) return showToast('名字和 token 都必填', 'error');
+    if (token.length < 20) return showToast('token 看起来不正确（< 20 字符）', 'error');
+    const res = await apiSend('/api/tokens', 'POST', { name, token });
+    if (res.ok) {
+      showToast(`✓ token "${name}" 已添加`);
+      document.getElementById('new-token-name').value = '';
+      document.getElementById('new-token-value').value = '';
+      loadSettingsPage();
+    } else {
+      showToast('失败：' + res.error, 'error');
+    }
+  }
+
+  async function deleteToken(name) {
+    if (!confirm(`确定删除 token "${name}"？`)) return;
+    const res = await apiSend(`/api/tokens/${encodeURIComponent(name)}`, 'DELETE');
+    if (res.ok) { showToast(`✓ "${name}" 已删除`); loadSettingsPage(); }
+    else showToast('失败：' + res.error, 'error');
+  }
+
+  async function addMonitorItem() {
+    const url    = document.getElementById('new-item-url').value.trim();
+    const name   = document.getElementById('new-item-name').value.trim();
+    const short  = document.getElementById('new-item-short').value.trim();
+    const sector = document.getElementById('new-item-sector').value;
+    if (!url || !name) return showToast('URL 和名称都必填', 'error');
+    if (!sector) return showToast('请选择板块', 'error');
+    if (!url.startsWith('https://www.steamdt.com/')) return showToast('URL 必须是 SteamDT 商品页', 'error');
+
+    const body = {
+      url, name, short_name: short || null, sector,
+      strong_support: parseFloat(document.getElementById('new-item-strong').value) || null,
+      primary_support: parseFloat(document.getElementById('new-item-primary').value) || null,
+      resistance_1: parseFloat(document.getElementById('new-item-r1').value) || null,
+      resistance_2: parseFloat(document.getElementById('new-item-r2').value) || null,
+      resistance_3: parseFloat(document.getElementById('new-item-r3').value) || null,
+    };
+    const res = await apiSend('/api/items', 'POST', body);
+    if (res.ok) {
+      showToast(`✓ 品种已添加（id: ${res.data.id}），下次扫描自动抓取`);
+      ['new-item-url','new-item-name','new-item-short','new-item-strong','new-item-primary','new-item-r1','new-item-r2','new-item-r3'].forEach(id => {
+        const el = document.getElementById(id); if (el) el.value = '';
+      });
+      document.getElementById('new-item-sector').value = '';
+      loadSettingsPage();
+    } else {
+      showToast('失败：' + res.error, 'error');
+    }
+  }
+
+  async function deleteItem(itemId, displayName) {
+    if (!confirm(`确定删除 "${displayName}"？历史数据也会一并清掉，且不可逆。`)) return;
+    const res = await apiSend(`/api/items/${encodeURIComponent(itemId)}`, 'DELETE');
+    if (res.ok) { showToast(`✓ "${displayName}" 已删除`); loadSettingsPage(); }
+    else showToast('失败：' + res.error, 'error');
+  }
+
+  // 把 nav-status-pill 接到 api-status 的内容
+  function syncNavStatus() {
+    const src = document.getElementById('api-status');
+    const dst = document.getElementById('nav-status-pill');
+    if (src && dst) {
+      dst.innerHTML = src.innerHTML;
+      dst.className = src.className.replace(/mb-\d+/g, '') + ' nav-pill';
+    }
+  }
+  setInterval(syncNavStatus, 1000);
+
+  /* ============================================================
+     滚动入场观察器（Scroll Reveal）— 双向触发，每次都重播
+     ============================================================ */
+  const observer = new IntersectionObserver(
+    (entries) => entries.forEach(e => {
+      if (e.isIntersecting) {
+        e.target.classList.add('in-view');
+      } else {
+        e.target.classList.remove('in-view');
+      }
+    }),
+    { threshold: 0.12, rootMargin: '0px 0px -10% 0px' }
+  );
+  document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+  /* ============================================================
+     SVG 价格图入场观察器（每次入场都重画线 + 重淡入填充）
+     ============================================================ */
+  const chartStroke = document.getElementById('chart-stroke');
+  const chartArea   = document.querySelector('.chart-area');
+  if (chartStroke && chartArea) {
+    const chartObserver = new IntersectionObserver(
+      (entries) => entries.forEach(e => {
+        if (e.isIntersecting) {
+          // 强制重启 CSS 动画：移除→reflow→添加
+          chartStroke.classList.remove('draw');
+          chartArea.classList.remove('fadein');
+          void chartStroke.offsetWidth;   // 触发 reflow
+          chartStroke.classList.add('draw');
+          chartArea.classList.add('fadein');
+        }
+      }),
+      { threshold: 0.3 }
+    );
+    chartObserver.observe(chartStroke.closest('section'));
+  }
+
+  /* ============================================================
+     磁吸按钮（鼠标跟随 + 弹性归位） + 点击行为
+     ============================================================ */
+  document.querySelectorAll('.magnetic-btn').forEach(btn => {
+    btn.addEventListener('mousemove', e => {
+      const r = btn.getBoundingClientRect();
+      const x = e.clientX - r.left - r.width / 2;
+      const y = e.clientY - r.top - r.height / 2;
+      btn.style.transform = `translate(${x*0.18}px, ${y*0.25}px) scale(1.04)`;
+    });
+    btn.addEventListener('mouseleave', () => {
+      btn.style.transform = '';
+    });
+
+    // 点击行为
+    btn.addEventListener('click', () => {
+      // data-scroll-to="section-id" → 滚动到指定 section（top 表示页顶）
+      const target = btn.dataset.scrollTo;
+      if (target) {
+        if (target === 'top') {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        } else {
+          const el = document.getElementById(target);
+          if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+        return;
+      }
+      // data-open-url → 新标签页打开
+      const url = btn.dataset.openUrl;
+      if (url) {
+        window.open(url, '_blank');
+        return;
+      }
+    });
+  });
+
+  /* 旧版 nav a 滚动逻辑已被 multi-page switchPage 替代，此处留空 */
+
+  /* ============================================================
+     Sticky 视差段：根据滚动进度切换文字 + 视觉
+     ============================================================ */
+  const stage      = document.querySelector('.sticky-stage');
+  const visual     = document.getElementById('sticky-visual');
+  const label      = document.getElementById('sticky-label');
+  const content    = document.getElementById('sticky-content');
+
+  const chapters = [
+    { letter: 'A', title: 'A 类<br/><span class="text-gradient">即时止损</span>',
+      desc: '固定止损、移动止损、强支撑止损、急跌检测。<br/>A 类信号无视去重，触发即推送，<br/>因为风险控制不能等。',
+      bg: 'var(--skin-doppler)' },
+    { letter: 'C', title: 'C 类<br/><span class="text-gradient">突破买入</span>',
+      desc: '突破前期高 + 大盘配合 + 放量确认。<br/>多重过滤后的高质量买入信号，<br/>给你最清晰的进场时机。',
+      bg: 'var(--skin-marble)' },
+    { letter: 'D', title: 'D 类<br/><span class="text-gradient">回踩入场</span>',
+      desc: '突破回踩缩量 + 反弹拐头 + 动能确认。<br/>这是技术分析里最经典的入场点，<br/>让你买在便宜价、止损更紧。',
+      bg: 'var(--skin-tempered)' },
+  ];
+
+  window.addEventListener('scroll', () => {
+    const r = stage.getBoundingClientRect();
+    const total = stage.offsetHeight - window.innerHeight;
+    const progress = Math.max(0, Math.min(1, -r.top / total));
+    const idx = Math.min(chapters.length - 1, Math.floor(progress * chapters.length));
+    const chap = chapters[idx];
+
+    label.textContent = chap.letter;
+    visual.style.background = chap.bg;
+    content.innerHTML = `
+      <span class="pill mb-6">CHAPTER ${idx + 1}</span>
+      <h2 class="text-5xl font-semibold tracking-tight leading-tight mb-6">${chap.title}</h2>
+      <p class="text-lg text-[var(--text-secondary)] leading-relaxed">${chap.desc}</p>
+    `;
+  });
+
+  /* ============================================================
+     数字平滑递增（hero 大数据）
+     ============================================================ */
+  document.querySelectorAll('.text-4xl.font-semibold').forEach(el => {
+    const text = el.textContent.trim();
+    const num = parseInt(text);
+    if (isNaN(num) || num <= 1) return;
+    let cur = 0;
+    const step = Math.max(1, Math.ceil(num / 30));
+    const tick = setInterval(() => {
+      cur = Math.min(num, cur + step);
+      el.firstChild.textContent = cur;
+      if (cur >= num) clearInterval(tick);
+    }, 25);
+  });
+</script>
+</body>
+</html>

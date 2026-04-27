@@ -1,0 +1,53 @@
+{
+  "version": 3,
+  "_note": "示例状态文件。复制这个文件为 m4a4_buzz_kill_state.json，然后通过 dashboard 的【设置】页填充你的 token / 监控品种。",
+  "global": {
+    "pushplus_tokens": [],
+    "homepage_url": "https://www.steamdt.com",
+    "frequency_hours": 1,
+    "trading_style": "swing",
+    "fixed_stop_pct": 0.15,
+    "trailing_stop_pct": 0.12,
+    "dedup_window_hours": 4,
+    "tier_plan": {
+      "entry_pct":          [0.30, 0.30, 0.40],
+      "tp_levels_from_avg": [0.20, 0.40, 0.70],
+      "tp_close_pct":       [0.30, 0.30, 0.0]
+    },
+    "fundamentals": {
+      "bias": "neutral",
+      "summary": "尚未获取，等待 LLM/关键词分类首次跑",
+      "whale_signals": [],
+      "recent_updates": []
+    },
+    "scheduler": {
+      "mode": "embedded"
+    },
+    "sectors": {
+      "primary": {
+        "_template": ["item_id1", "item_id2"]
+      },
+      "secondary": {},
+      "weights": { "primary": 0.7, "secondary": 0.3 }
+    },
+    "telegram_config": {
+      "enabled": false,
+      "bot_token": "",
+      "recipients": []
+    },
+    "llm_config": {
+      "provider": "anthropic",
+      "model": "",
+      "api_key": "",
+      "base_url": "",
+      "enabled_modules": {
+        "news_classification": false,
+        "whale_parsing":       false,
+        "daily_review":        false,
+        "param_proposal":      false
+      }
+    },
+    "circuit_breaker": { "active": false }
+  },
+  "items": []
+}
