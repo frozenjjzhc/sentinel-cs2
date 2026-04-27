@@ -57,15 +57,48 @@ BIAS_BY_CATEGORY = {
 }
 
 
-def fetch_news() -> list:
-    """Fetch latest CS2 news. Returns list of items or []."""
+_LAST_FETCH_ERROR = None
+
+
+def get_last_fetch_error() -> str:
+    """返回最近一次 fetch_news 失败的具体原因（caller 可查询）。"""
+    return _LAST_FETCH_ERROR or ""
+
+
+def fetch_news(max_retries: int = 3, timeout: int = 30) -> list:
+    """
+    Fetch latest CS2 news from Steam API.
+    Returns list of items, or [] on failure.
+    Stores last error in module-level _LAST_FETCH_ERROR.
+    """
+    global _LAST_FETCH_ERROR
+    last_err = None
+    for attempt in range(1, max_retries + 1):
+        try:
+            r = requests.get(STEAM_NEWS_URL, timeout=timeout)
+            r.raise_for_status()
+            data = r.json()
+            items = data.get("appnews", {}).get("newsitems", [])
+            _LAST_FETCH_ERROR = None
+            return items
+        except requests.Timeout:
+            last_err = f"超时（{timeout}s 内未响应）- 第 {attempt}/{max_retries} 次"
+        except requests.ConnectionError as e:
+            last_err = f"连接异常: {str(e)[:120]} - 第 {attempt}/{max_retries} 次"
+        except requests.HTTPError as e:
+            last_err = f"HTTP {e.response.status_code if e.response else '?'} - 第 {attempt}/{max_retries} 次"
+        except Exception as e:
+            last_err = f"{type(e).__name__}: {str(e)[:120]} - 第 {attempt}/{max_retries} 次"
+
+        if attempt < max_retries:
+            time.sleep(2 * attempt)   # 退避：2s / 4s / 6s
+
+    _LAST_FETCH_ERROR = last_err
     try:
-        r = requests.get(STEAM_NEWS_URL, timeout=15)
-        r.raise_for_status()
-        data = r.json()
-        return data.get("appnews", {}).get("newsitems", [])
-    except Exception as e:
-        return []
+        utils.log_error(config.ERROR_LOG, f"fetch_news 失败: {last_err}")
+    except Exception:
+        pass
+    return []
 
 
 def classify_news(news_item: dict) -> tuple:

@@ -161,6 +161,7 @@ def _item_summary(item: dict) -> dict:
             "tiers_count": len(pos.get("tiers", [])),
             "avg_entry_price": pos.get("avg_entry_price"),
             "total_qty_pct": pos.get("total_qty_pct", 0),
+            "total_pieces": pos.get("total_pieces", 0),
             "highest_since_first_entry": pos.get("highest_since_first_entry"),
             "tp_executed": pos.get("tp_executed", []),
             "pnl_pct": (
@@ -423,13 +424,15 @@ def sector_options():
 # ---------- 仓位 ----------
 class BuyRequest(BaseModel):
     price: float
-    qty_pct: float  # 0-1, 比如 0.3 = 30%
+    qty_pieces: float            # 真实买入把数（必填，可小数）
+    qty_pct: Optional[float] = None  # 占计划满仓的比例 0-1（选填）
     note: Optional[str] = None
 
 
 class SellRequest(BaseModel):
     price: float
-    qty_pct: float  # 卖出比例 0-1
+    qty_pieces: float            # 真实卖出把数
+    qty_pct: Optional[float] = None  # 占计划的比例（选填）
 
 
 class LegacyRequest(BaseModel):
@@ -448,10 +451,12 @@ def _find_item(state, item_id):
 @app.post("/api/positions/{item_id}/buy")
 def position_buy(item_id: str, body: BuyRequest):
     """新建/加仓：往 position.tiers 推一档。"""
-    if body.qty_pct <= 0 or body.qty_pct > 1:
-        raise HTTPException(400, "qty_pct 必须在 (0, 1] 区间，例如 0.3 = 30%")
+    if body.qty_pieces <= 0:
+        raise HTTPException(400, "qty_pieces 必须为正（真实买入把数）")
     if body.price <= 0:
         raise HTTPException(400, "price 必须为正")
+    if body.qty_pct is not None and (body.qty_pct <= 0 or body.qty_pct > 1):
+        raise HTTPException(400, "qty_pct 必须在 (0, 1] 区间，例如 0.3 = 30%")
     state = _load_state_or_404()
     item = _find_item(state, item_id)
     if not item:
@@ -464,7 +469,8 @@ def position_buy(item_id: str, body: BuyRequest):
     new_tier = {
         "tier_idx": len(tiers) + 1,
         "entry_price": body.price,
-        "qty_pct": body.qty_pct,
+        "qty_pieces": body.qty_pieces,
+        "qty_pct": body.qty_pct if body.qty_pct is not None else 0,
         "entry_time": utils.now_iso(),
         "note": body.note or "",
         "source": "manual_dashboard",
@@ -477,6 +483,7 @@ def position_buy(item_id: str, body: BuyRequest):
         "t": utils.now_iso(),
         "type": "manual_buy",
         "price": body.price,
+        "qty_pieces": body.qty_pieces,
         "qty_pct": body.qty_pct,
         "tier_idx": new_tier["tier_idx"],
         "note": body.note or "",
@@ -487,9 +494,12 @@ def position_buy(item_id: str, body: BuyRequest):
 
 @app.post("/api/positions/{item_id}/sell")
 def position_sell(item_id: str, body: SellRequest):
-    """卖出：按比例缩减各档 qty_pct（保持档结构）。"""
-    if body.qty_pct <= 0 or body.qty_pct > 1:
-        raise HTTPException(400, "qty_pct 必须在 (0, 1] 区间")
+    """
+    卖出：按真实把数 qty_pieces 等比例缩减各档（保持档结构）。
+    qty_pct 字段（占计划比例）会等比例缩减。
+    """
+    if body.qty_pieces <= 0:
+        raise HTTPException(400, "qty_pieces 必须为正")
     state = _load_state_or_404()
     item = _find_item(state, item_id)
     if not item:
@@ -498,27 +508,37 @@ def position_sell(item_id: str, body: SellRequest):
     tiers = pos.get("tiers", [])
     if not tiers:
         raise HTTPException(400, "无新仓可卖")
-    total_qty = sum(t.get("qty_pct", 0) for t in tiers)
-    if body.qty_pct > total_qty + 1e-6:
-        raise HTTPException(400, f"卖出 {body.qty_pct*100:.0f}% 超过当前持仓 {total_qty*100:.0f}%")
-    if body.qty_pct >= total_qty - 1e-6:
-        # 全平
+
+    def _pieces(t):
+        v = t.get("qty_pieces")
+        return v if v is not None else t.get("qty_pct", 0)
+
+    total_pieces = sum(_pieces(t) for t in tiers)
+    if body.qty_pieces > total_pieces + 1e-6:
+        raise HTTPException(400, f"卖出 {body.qty_pieces} 把超过当前持仓 {total_pieces} 把")
+
+    if body.qty_pieces >= total_pieces - 1e-6:
         pos["tiers"] = []
         pos["avg_entry_price"] = None
         pos["total_qty_pct"] = 0
+        pos["total_pieces"] = 0
         pos["highest_since_first_entry"] = None
         pos["tp_executed"] = []
         cleared = True
     else:
-        ratio = 1 - (body.qty_pct / total_qty)
+        ratio = 1 - (body.qty_pieces / total_pieces)
         for t in tiers:
-            t["qty_pct"] *= ratio
+            if t.get("qty_pieces") is not None:
+                t["qty_pieces"] *= ratio
+            t["qty_pct"] = t.get("qty_pct", 0) * ratio
         state_mod.compute_position_summary(item)
         cleared = False
+
     item.setdefault("recommendations_log", []).append({
         "t": utils.now_iso(),
         "type": "manual_sell",
         "price": body.price,
+        "qty_pieces": body.qty_pieces,
         "qty_pct": body.qty_pct,
         "cleared": cleared,
     })
@@ -758,7 +778,12 @@ def llm_classify_news_now():
         raise HTTPException(400, "LLM 未配置或 api_key 无效")
     news_items = nm.fetch_news()
     if not news_items:
-        raise HTTPException(500, "拉取 Steam News 失败（网络/接口异常）")
+        err = nm.get_last_fetch_error() or "未知原因"
+        raise HTTPException(
+            500,
+            f"拉取 Steam News 失败：{err}。建议：① 检查网络能否访问 https://api.steampowered.com "
+            "② 用代理/VPN 后重试 ③ 该错误不影响其他功能（仓位/dashboard/AI 复盘 都正常）",
+        )
     result = llm_analyst.classify_news_with_llm(state, news_items)
     state_mod.save_state(state)   # 保存 audit log
     if not result:
