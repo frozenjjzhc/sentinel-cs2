@@ -7,9 +7,8 @@
 ```powershell
 git clone https://github.com/frozenjjzhc/sentinel-cs2.git
 cd sentinel-cs2
-.\setup.bat
-copy state.example.json m4a4_buzz_kill_state.json
-.\Sentinel.bat
+.\setup.bat        # 装依赖 + 自动初始化 state.json
+.\Sentinel.bat     # 启动 API + 监控 + 打开浏览器
 ```
 
 ## 分支约定

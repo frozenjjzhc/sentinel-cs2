@@ -49,13 +49,19 @@ if errorlevel 1 (
 echo OK
 echo.
 
-REM --- Check state.json ---
+REM --- Check / init state.json ---
 echo [4/4] Checking state.json...
 if exist "m4a4_buzz_kill_state.json" (
     echo Found existing state.json - will be reused.
 ) else (
-    echo WARNING: m4a4_buzz_kill_state.json not found in this directory.
-    echo Make sure you're running this from D:\claude\xuanxiao\
+    if exist "state.example.json" (
+        copy "state.example.json" "m4a4_buzz_kill_state.json" >nul
+        echo Created m4a4_buzz_kill_state.json from state.example.json.
+        echo You can fill in PushPlus tokens / monitored items via the dashboard ^(Settings page^) after launch.
+    ) else (
+        echo WARNING: Neither state.json nor state.example.json found.
+        echo Please re-clone or re-extract the project archive.
+    )
 )
 echo.
 
@@ -64,9 +70,13 @@ echo   Setup complete!
 echo ===================================================
 echo.
 echo Next steps:
-echo   1. Run a one-time test:    python monitor_fast.py --test
-echo   2. Schedule via Windows Task Scheduler:
-echo        Program: %CD%\run_monitor_fast.bat
-echo        Trigger: Every 10 minutes
+echo   1. Double-click  Sentinel.bat   ^(starts API + monitoring + opens dashboard^)
+echo   2. In the dashboard:
+echo        - Settings page: add PushPlus tokens, monitored items, optional LLM config
+echo        - AI Review page: see shadow stats once data accumulates
+echo.
+echo For developer / debug mode:
+echo   - Manual fast scan:    python monitor_fast.py --test
+echo   - API-only ^(no auto monitor^): .\run_backend_api.bat ^(set scheduler.mode=external first^)
 echo.
 pause
