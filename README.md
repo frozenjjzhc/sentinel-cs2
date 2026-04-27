@@ -514,6 +514,25 @@ Remove-Item -Recurse D:\claude\xuanxiao\.playwright_profile
 # 改 scraper.py 的 SteamDTScraper(headless=False) 用可视模式手动通过验证码
 ```
 
+### 10.1.5 setup.bat 安装 Chromium 卡住 / 超时
+
+报错 `Request to https://storage.googleapis.com/... timed out`：
+
+国内访问 Google CDN 经常超时。`setup.bat` 已经默认走淘宝镜像，但如果还是失败：
+
+```powershell
+# 手动指定镜像后重跑
+$env:PLAYWRIGHT_DOWNLOAD_HOST = "https://cdn.npmmirror.com/binaries/playwright"
+python -m playwright install chromium
+```
+
+或换其他镜像：
+```powershell
+$env:PLAYWRIGHT_DOWNLOAD_HOST = "https://npmmirror.com/mirrors/playwright"
+```
+
+最稳的方式是启 VPN 再跑 setup.bat。
+
 ### 10.2 PushPlus 推送失败
 
 - 检查 token 是否过期（PushPlus 网页登录看）

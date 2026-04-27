@@ -40,11 +40,30 @@ echo.
 
 REM --- Install Playwright Chromium ---
 echo [3/4] Installing Playwright Chromium browser (~150MB, one-time)...
+echo [info] Using npmmirror.com mirror for faster download in China...
+echo        (If outside China, still works - falls back to official source if mirror fails)
+echo.
+
+REM 优先用淘宝镜像（国内秒下，国外也能走 CDN）
+set "PLAYWRIGHT_DOWNLOAD_HOST=https://cdn.npmmirror.com/binaries/playwright"
 python -m playwright install chromium
+
 if errorlevel 1 (
-    echo ERROR: Failed to install Chromium.
-    pause
-    exit /b 1
+    echo.
+    echo [warning] 镜像下载失败，回落到 Playwright 官方源（可能需要 VPN）...
+    set "PLAYWRIGHT_DOWNLOAD_HOST="
+    python -m playwright install chromium
+    if errorlevel 1 (
+        echo.
+        echo ERROR: Failed to install Chromium.
+        echo.
+        echo 排查方法：
+        echo   1. 检查网络是否正常（能否访问 https://npmmirror.com）
+        echo   2. 如果在国内：尝试启动 VPN 后重跑此脚本
+        echo   3. 国外用户：直接重跑应该能用官方源
+        pause
+        exit /b 1
+    )
 )
 echo OK
 echo.
