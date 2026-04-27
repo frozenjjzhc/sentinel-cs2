@@ -2,9 +2,14 @@
 REM ============================================================
 REM CS2 Skin Monitor - One-Time Setup
 REM 1. Installs Python dependencies
-REM 2. Downloads Playwright Chromium
-REM 3. Verifies state.json exists
+REM 2. Downloads Playwright Chromium (with China mirror)
+REM 3. Initializes state.json from state.example.json
 REM ============================================================
+
+REM 设置 UTF-8 代码页（避免中文消息乱码）
+chcp 65001 > nul
+set PYTHONIOENCODING=utf-8
+set PYTHONUTF8=1
 
 setlocal enabledelayedexpansion
 
@@ -18,8 +23,20 @@ REM --- Check Python ---
 echo [1/4] Checking Python installation...
 python --version >nul 2>&1
 if errorlevel 1 (
-    echo ERROR: Python not found in PATH.
-    echo Install Python 3.9+ from https://www.python.org/downloads/
+    echo.
+    echo ============================================================
+    echo  ERROR: Python not found in PATH.
+    echo ============================================================
+    echo.
+    echo Python 没装，或者装的时候没勾 "Add python.exe to PATH"。
+    echo.
+    echo Install steps / 安装步骤:
+    echo   1. 去 https://www.python.org/downloads/ 下载 Python 3.9+
+    echo   2. 双击安装包，第一屏底部一定要勾上：
+    echo      [X] Add python.exe to PATH      ^<-- 这个不勾的话装完也用不了
+    echo   3. Install Now
+    echo   4. 装完后关闭这个窗口，重新双击 setup.bat
+    echo.
     pause
     exit /b 1
 )
