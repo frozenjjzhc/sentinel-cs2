@@ -99,12 +99,22 @@ class SteamDTScraper:
 
     def __enter__(self):
         self._pw = sync_playwright().start()
-        self._context = self._pw.chromium.launch_persistent_context(
+        # 优先用系统已装的 Chrome（在国内不需要下载 Chromium，秒启）
+        # 失败回落到 Playwright 自带的 Chromium
+        common_kwargs = dict(
             user_data_dir=self.profile_dir,
             headless=self.headless,
             viewport={"width": 1400, "height": 900},
             user_agent=config.USER_AGENT,
         )
+        try:
+            self._context = self._pw.chromium.launch_persistent_context(
+                **common_kwargs,
+                channel="chrome",   # 系统 Chrome
+            )
+        except Exception:
+            # 回落：用 Playwright 自带的 Chromium（如果通过 setup.bat 装了）
+            self._context = self._pw.chromium.launch_persistent_context(**common_kwargs)
         self._page = (
             self._context.pages[0] if self._context.pages else self._context.new_page()
         )

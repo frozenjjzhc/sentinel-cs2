@@ -58,34 +58,53 @@ if errorlevel 1 (
 echo OK
 echo.
 
-REM --- Install Playwright Chromium ---
-echo [3/4] Installing Playwright Chromium browser ^(~150MB, one-time^)...
-echo [info] Trying npmmirror.com mirror first ^(faster in China^)...
-echo.
+REM --- Install Playwright browser ---
+REM Strategy:
+REM   Step 1: Register system Chrome (instant, no download).
+REM           Works for >95%% of users who have Chrome installed.
+REM   Step 2: Only if Chrome registration fails, fall back to downloading Chromium.
+REM           Try npmmirror.com first, then official source.
+REM           This avoids the 150MB download which is slow in China.
+echo [3/4] Setting up browser for Playwright...
+echo [info] Trying to register system Chrome first ^(instant, no download^)...
+python -m playwright install chrome
+if not errorlevel 1 (
+    echo OK - using system Chrome
+    echo.
+    goto browser_done
+)
 
+echo [warning] System Chrome not found. Downloading Chromium ^(~150MB^)...
+echo           Trying npmmirror.com mirror first...
 set "PLAYWRIGHT_DOWNLOAD_HOST=https://cdn.npmmirror.com/binaries/playwright"
 python -m playwright install chromium
+if not errorlevel 1 (
+    echo OK
+    echo.
+    goto browser_done
+)
 
+echo [warning] Mirror download failed. Falling back to official source...
+echo           ^(may need VPN if you're in China; this can be slow^)
+set "PLAYWRIGHT_DOWNLOAD_HOST="
+python -m playwright install chromium
 if errorlevel 1 (
     echo.
-    echo [warning] Mirror download failed. Falling back to official source...
-    echo           ^(may need VPN if you're in China^)
-    set "PLAYWRIGHT_DOWNLOAD_HOST="
-    python -m playwright install chromium
-    if errorlevel 1 (
-        echo.
-        echo ERROR: Failed to install Chromium.
-        echo.
-        echo Troubleshooting:
-        echo   1. Check internet connection ^(can you reach https://npmmirror.com?^)
-        echo   2. If in China and mirror failed: try VPN, then re-run setup.bat
-        echo   3. If outside China: try VPN or check firewall
-        pause
-        exit /b 1
-    )
+    echo ERROR: Failed to install browser.
+    echo.
+    echo Easiest fix: install Google Chrome from https://www.google.cn/chrome/
+    echo            then re-run setup.bat. Chrome registration is instant.
+    echo.
+    echo Other options:
+    echo   - Check internet ^(can you reach https://npmmirror.com?^)
+    echo   - If in China: try VPN, then re-run setup.bat
+    pause
+    exit /b 1
 )
 echo OK
 echo.
+
+:browser_done
 
 REM --- Check / init state.json ---
 echo [4/4] Checking state.json...
