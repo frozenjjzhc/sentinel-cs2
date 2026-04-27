@@ -393,11 +393,16 @@ D:\claude\xuanxiao\
 │   └── backend_api.py               FastAPI 桥接（前端用）
 │
 ├── 🔧 调度入口
-│   ├── setup.bat                    一键安装
-│   ├── run_monitor_fast.bat         任务调度器入口
-│   ├── run_monitor_slow.bat         同上
-│   ├── run_daily_review.bat         同上
-│   └── run_backend_api.bat          启动 API 服务
+│   ├── setup.bat                    一键安装依赖
+│   ├── ⭐ Sentinel.bat               一键启动整套（API + 嵌入式监控 + 浏览器）
+│   ├── stop_api.bat                 强制停 API（监控随之停止）
+│   ├── setup_autostart.bat          可选：装登录自启
+│   ├── uninstall_autostart.bat      卸载登录自启
+│   ├── start_api_silent.vbs         静默启动包装（自启用）
+│   ├── run_backend_api.bat          仅启动 API（不开浏览器，看日志用）
+│   ├── run_monitor_fast.bat         单跑 fast（外部 Task Scheduler 模式用）
+│   ├── run_monitor_slow.bat         单跑 slow
+│   └── run_daily_review.bat         单跑 daily review
 │
 ├── 📦 lib/ — 核心模块
 │   ├── config.py                    全局常量
@@ -458,7 +463,9 @@ D:\claude\xuanxiao\
 ### 8.2 命令行 / API
 | 想做的事 | 命令 / 步骤 |
 |---|---|
-| 启动 API | `.\run_backend_api.bat` |
+| **启动整套（API + 监控 + 浏览器）** | **双击 `Sentinel.bat`** |
+| 仅启动 API（看实时日志） | `.\run_backend_api.bat` |
+| 强制停 API + 监控 | 双击 `stop_api.bat` 或关 Sentinel 窗口 |
 | 手动跑一次 fast 扫描 | `python monitor_fast.py --test` |
 | 加新品种（命令行向导）| `python add_item.py` |
 | 看错误 | `Get-Content m4a4_errors.log -Encoding UTF8 -Tail 30` |
