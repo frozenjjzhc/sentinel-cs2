@@ -321,72 +321,13 @@
       </p>
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-      <!-- 卡片 1 - M4A4 喧嚣杀戮 (data-skin-card 标记会被 API 替换) -->
-      <div class="glass-card reveal delay-1 p-7" data-skin-card style="background: linear-gradient(180deg, rgba(255,255,255,0.7), rgba(248,113,113,0.06));">
-        <div class="flex items-center justify-between mb-4">
-          <div class="w-12 h-12 rounded-2xl flex items-center justify-center" style="background: var(--skin-recoil);">
-            <span class="text-white font-medium text-sm">M4A4</span>
-          </div>
-          <span class="pill rose">活跃</span>
-        </div>
-        <h3 class="font-medium text-lg mb-1" data-name>喧嚣杀戮</h3>
-        <p class="text-xs text-[var(--text-tertiary)] mb-4">崭新出厂 · 一代手套板块</p>
-        <div class="text-3xl font-semibold tracking-tight" data-price>¥4,298</div>
-        <div class="flex items-center gap-2 mt-2">
-          <span class="text-sm text-emerald-600 font-medium" data-today-pct>+0.83%</span>
-          <span class="text-xs text-[var(--text-tertiary)]">今日</span>
-        </div>
-      </div>
-
-      <!-- 卡片 2 - AK 抽象派 -->
-      <div class="glass-card reveal delay-2 p-7" data-skin-card style="background: linear-gradient(180deg, rgba(255,255,255,0.7), rgba(99,102,241,0.06));">
-        <div class="flex items-center justify-between mb-4">
-          <div class="w-12 h-12 rounded-2xl flex items-center justify-center" style="background: var(--skin-doppler);">
-            <span class="text-white font-medium text-sm">AK-47</span>
-          </div>
-          <span class="pill green">持仓</span>
-        </div>
-        <h3 class="font-medium text-lg mb-1" data-name>抽象派 1337</h3>
-        <p class="text-xs text-[var(--text-tertiary)] mb-4">久经沙场 · 一代手套板块</p>
-        <div class="text-3xl font-semibold tracking-tight" data-price>¥1,238</div>
-        <div class="flex items-center gap-2 mt-2">
-          <span class="text-sm text-rose-600 font-medium" data-today-pct>-2.61%</span>
-          <span class="text-xs text-[var(--text-tertiary)]">今日</span>
-        </div>
-      </div>
-
-      <!-- 卡片 3 - M4A4 红色 DDPAT -->
-      <div class="glass-card reveal delay-3 p-7" data-skin-card style="background: linear-gradient(180deg, rgba(255,255,255,0.7), rgba(245,158,11,0.06));">
-        <div class="flex items-center justify-between mb-4">
-          <div class="w-12 h-12 rounded-2xl flex items-center justify-center" style="background: var(--skin-ember);">
-            <span class="text-white font-medium text-sm">M4A4</span>
-          </div>
-          <span class="pill amber">收藏品</span>
-        </div>
-        <h3 class="font-medium text-lg mb-1" data-name>红色 DDPAT</h3>
-        <p class="text-xs text-[var(--text-tertiary)] mb-4">崭新出厂 · 收藏品板块</p>
-        <div class="text-3xl font-semibold tracking-tight" data-price>¥2,050</div>
-        <div class="flex items-center gap-2 mt-2">
-          <span class="text-sm text-rose-600 font-medium" data-today-pct>-4.16%</span>
-          <span class="text-xs text-[var(--text-tertiary)]">今日</span>
-        </div>
-      </div>
-
-      <!-- 卡片 4 - 驾驶手套月色 -->
-      <div class="glass-card reveal delay-4 p-7" data-skin-card style="background: linear-gradient(180deg, rgba(255,255,255,0.7), rgba(168,85,247,0.06));">
-        <div class="flex items-center justify-between mb-4">
-          <div class="w-12 h-12 rounded-2xl flex items-center justify-center" style="background: var(--skin-marble);">
-            <span class="text-white font-medium text-sm">★</span>
-          </div>
-          <span class="pill">非凡</span>
-        </div>
-        <h3 class="font-medium text-lg mb-1" data-name>驾驶手套月色</h3>
-        <p class="text-xs text-[var(--text-tertiary)] mb-4">略有磨损 · 一代手套板块</p>
-        <div class="text-3xl font-semibold tracking-tight" data-price>¥10,100</div>
-        <div class="flex items-center gap-2 mt-2">
-          <span class="text-sm text-rose-600 font-medium" data-today-pct>-6.04%</span>
-          <span class="text-xs text-[var(--text-tertiary)]">今日</span>
+    <div id="skin-cards-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <!-- 初始空态：API 加载完会被 renderSkinCards() 替换 -->
+      <div class="col-span-full text-center py-20">
+        <div class="text-6xl mb-4 opacity-25">🎯</div>
+        <div class="text-lg font-medium mb-2 text-[var(--text-secondary)]">暂无监控饰品</div>
+        <div class="text-sm text-[var(--text-tertiary)]">
+          去 <button onclick="switchPage('settings')" class="text-indigo-600 hover:underline cursor-pointer font-medium">设置</button> 添加你想监控的 SteamDT 饰品
         </div>
       </div>
     </div>
@@ -451,10 +392,17 @@
         <button class="chart-type-btn" data-type="kline">K 线</button>
       </div>
 
-      <div class="flex items-center gap-1 p-1 rounded-full bg-black/[0.04]">
+      <!-- 折线模式：时间范围 -->
+      <div id="chart-range-line" class="flex items-center gap-1 p-1 rounded-full bg-black/[0.04]">
         <button class="chart-range-btn active" data-hours="24">24H</button>
         <button class="chart-range-btn" data-hours="72">3D</button>
         <button class="chart-range-btn" data-hours="168">7D</button>
+      </div>
+
+      <!-- K 线模式：粒度（默认隐藏） -->
+      <div id="chart-range-kline" class="flex items-center gap-1 p-1 rounded-full bg-black/[0.04]" style="display: none;">
+        <button class="chart-kline-btn active" data-kline="hour">时K</button>
+        <button class="chart-kline-btn" data-kline="day">日K</button>
       </div>
 
       <button id="chart-refresh" class="px-4 py-2.5 rounded-full bg-indigo-50 text-indigo-600 text-sm font-medium hover:bg-indigo-100 transition cursor-pointer">
@@ -463,7 +411,7 @@
     </div>
 
     <style>
-      .chart-type-btn, .chart-range-btn {
+      .chart-type-btn, .chart-range-btn, .chart-kline-btn {
         padding: 6px 14px;
         border-radius: 9999px;
         font-size: 13px;
@@ -473,7 +421,7 @@
         border: none;
         transition: all 0.2s;
       }
-      .chart-type-btn.active, .chart-range-btn.active {
+      .chart-type-btn.active, .chart-range-btn.active, .chart-kline-btn.active {
         background: white;
         color: var(--text-primary);
         box-shadow: 0 1px 3px rgba(0,0,0,0.08);
@@ -527,8 +475,8 @@
           </svg>
         </div>
 
-        <!-- 成交量图 -->
-        <div class="relative w-full mt-2" style="height: 100px;">
+        <!-- 成交量图（仅 K 线模式显示） -->
+        <div id="chart2-volume-wrapper" class="relative w-full mt-2" style="height: 100px;">
           <div class="text-xs text-[var(--text-tertiary)] mb-1">成交量</div>
           <svg id="chart2-volume" viewBox="0 0 800 80" preserveAspectRatio="none" class="w-full" style="height: 80px;">
             <g id="chart2-volume-content"></g>
@@ -559,8 +507,26 @@
 <div id="page-positions" class="page" style="padding-top: 100px;">
 <section class="py-12 px-6 max-w-6xl mx-auto">
   <h2 class="text-4xl font-semibold tracking-tight mb-3">仓位管理</h2>
-  <p class="text-[var(--text-secondary)] mb-10">查看新建仓 / 套牢仓 / 总风险面板。修改仓位请告诉 Claude 主对话。</p>
+  <p class="text-[var(--text-secondary)] mb-10">查看新建仓 / 套牢仓 / 总风险面板。所有百分比基于你设的总仓位预算自动计算。</p>
 
+  <!-- 总仓位预算卡片 -->
+  <div class="mb-6 rounded-[28px] p-8 backdrop-blur-2xl"
+       style="background: rgba(255,255,255,0.65); border: 1px solid rgba(255,255,255,0.35);">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="text-lg font-medium">💼 总仓位预算</h3>
+      <span class="text-xs text-[var(--text-tertiary)]">所有"占总仓 %"基于此值计算</span>
+    </div>
+    <div class="flex flex-wrap items-center gap-3">
+      <div class="text-3xl font-semibold tracking-tight">¥</div>
+      <input id="budget-input" type="number" step="100" min="0" placeholder="如 50000"
+             class="text-3xl font-semibold tracking-tight px-3 py-1 rounded-xl border border-black/10 bg-white w-44">
+      <button onclick="saveBudget()" class="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 transition">保存</button>
+      <span id="budget-status" class="text-xs text-[var(--text-tertiary)]"></span>
+    </div>
+    <div id="budget-usage" class="mt-4 text-sm text-[var(--text-secondary)]">未设预算</div>
+  </div>
+
+  <!-- 总仓位汇总 -->
   <div id="portfolio-summary" class="mb-10 rounded-[28px] p-8 backdrop-blur-2xl"
        style="background: rgba(255,255,255,0.65); border: 1px solid rgba(255,255,255,0.35);">
     <h3 class="text-lg font-medium mb-4">总仓位</h3>
@@ -570,16 +536,6 @@
   <h3 class="text-2xl font-semibold tracking-tight mb-4">分品种</h3>
   <div id="positions-list" class="grid grid-cols-1 md:grid-cols-2 gap-4">加载中...</div>
 
-  <div class="mt-10 p-6 rounded-2xl bg-black/[0.03]">
-    <h3 class="font-medium mb-3">如何更新仓位？</h3>
-    <p class="text-sm text-[var(--text-secondary)] leading-relaxed">
-      告诉 Claude 主对话，比如：<br/>
-      • <code class="bg-white px-2 py-0.5 rounded text-indigo-600">M4A4 喧嚣 我以 ¥4,250 建第 1 档 30%</code><br/>
-      • <code class="bg-white px-2 py-0.5 rounded text-indigo-600">AK 抽象派 ¥1,500 加第 2 档 30%</code><br/>
-      • <code class="bg-white px-2 py-0.5 rounded text-indigo-600">M4A4 喧嚣 ¥4,800 卖出 30%</code><br/>
-      Claude 会读 state.json 帮你更新 position.tiers，A 类止损规则自动激活。
-    </p>
-  </div>
 </section>
 </div>
 
@@ -1079,8 +1035,10 @@
     // 2. 拉取 items
     const itemsResp = await fetchAPI('/api/items');
     if (itemsResp && itemsResp.items) {
-      updateItemCards(itemsResp.items);
+      renderSkinCards(itemsResp.items);   // 真实数据 / 或空数组 → 空态
       updateHeroStats(itemsResp.count);
+    } else {
+      renderSkinCards([]);                // API 没返回 items → 显示空态
     }
 
     // 3. 拉取大盘
@@ -1106,17 +1064,85 @@
     }
   }
 
-  function updateItemCards(items) {
-    const cardsContainer = document.querySelectorAll('.glass-card[data-skin-card]');
-    items.slice(0, cardsContainer.length).forEach((item, i) => {
-      const card = cardsContainer[i];
-      if (!card) return;
-      card.querySelector('[data-name]').textContent = item.short_name || item.name;
-      card.querySelector('[data-price]').textContent = fmtPrice(item.price);
-      const pctEl = card.querySelector('[data-today-pct]');
-      pctEl.textContent = fmtPct(item.today_pct);
-      pctEl.className = `text-sm font-medium ${pctClass(item.today_pct)}`;
-    });
+  function renderSkinCards(items) {
+    const container = document.getElementById('skin-cards-container');
+    if (!container) return;
+
+    // 空态：没有监控品种
+    if (!items || items.length === 0) {
+      container.innerHTML = `
+        <div class="col-span-full text-center py-20">
+          <div class="text-6xl mb-4 opacity-25">🎯</div>
+          <div class="text-lg font-medium mb-2 text-[var(--text-secondary)]">暂无监控饰品</div>
+          <div class="text-sm text-[var(--text-tertiary)]">
+            去 <button onclick="switchPage('settings')" class="text-indigo-600 hover:underline cursor-pointer font-medium">设置</button> 添加你想监控的 SteamDT 饰品
+          </div>
+        </div>
+      `;
+      return;
+    }
+
+    // 渲染前 4 个真实品种
+    const palette = [
+      { grad: 'skin-recoil',   bg: 'rgba(248,113,113,0.06)' },
+      { grad: 'skin-doppler',  bg: 'rgba(99,102,241,0.06)'  },
+      { grad: 'skin-ember',    bg: 'rgba(245,158,11,0.06)'  },
+      { grad: 'skin-marble',   bg: 'rgba(168,85,247,0.06)'  },
+    ];
+
+    const cardsHtml = items.slice(0, 4).map((item, i) => {
+      const c = palette[i % 4];
+
+      // 状态徽章：有持仓 → 绿色"持仓"；否则 → 默认"监控中"
+      const badge = item.position
+        ? '<span class="pill green">持仓</span>'
+        : '<span class="pill">监控中</span>';
+
+      // 武器名前缀（取 short_name / name 第一个词，最多 5 字符）
+      const fullName = item.short_name || item.name || '—';
+      const prefix = (fullName.split(/\s+/)[0] || '').slice(0, 5);
+
+      // 描述：从 name 里提取磨损度（括号里的内容），加上 phase
+      const wearMatch = (item.name || '').match(/\(([^)]+)\)/);
+      const wear = wearMatch ? wearMatch[1] : '';
+      const phase = item.phase && item.phase !== 'unknown' ? item.phase : '';
+      const desc = [wear, phase].filter(Boolean).join(' · ') || '监控中';
+
+      const todayPct = item.today_pct;
+      const pctText = todayPct != null ? fmtPct(todayPct) : '—';
+      const pctCls  = pctClass(todayPct);
+
+      // 转义 HTML 特殊字符
+      const safe = (s) => String(s ?? '').replace(/[<>&"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
+
+      return `
+        <div class="glass-card reveal delay-${(i % 4) + 1} p-7" style="background: linear-gradient(180deg, rgba(255,255,255,0.7), ${c.bg});">
+          <div class="flex items-center justify-between mb-4">
+            <div class="w-12 h-12 rounded-2xl flex items-center justify-center" style="background: var(--${c.grad});">
+              <span class="text-white font-medium text-sm">${safe(prefix)}</span>
+            </div>
+            ${badge}
+          </div>
+          <h3 class="font-medium text-lg mb-1">${safe(fullName)}</h3>
+          <p class="text-xs text-[var(--text-tertiary)] mb-4">${safe(desc)}</p>
+          <div class="text-3xl font-semibold tracking-tight">${fmtPrice(item.price)}</div>
+          <div class="flex items-center gap-2 mt-2">
+            <span class="text-sm font-medium ${pctCls}">${pctText}</span>
+            <span class="text-xs text-[var(--text-tertiary)]">今日</span>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    // 如果监控品种 > 4，加一行小提示
+    const moreHint = items.length > 4
+      ? `<div class="col-span-full text-center text-xs text-[var(--text-tertiary)] mt-2">仅显示前 4 个 · 共 ${items.length} 个监控品种 · <button onclick="switchPage('charts')" class="text-indigo-600 hover:underline cursor-pointer">走势图</button> 查看全部</div>`
+      : '';
+
+    container.innerHTML = cardsHtml + moreHint;
+
+    // 重新挂 reveal observer（新生成的元素）
+    document.querySelectorAll('#skin-cards-container .reveal').forEach(el => observer.observe(el));
   }
 
   function updateHeroStats(itemCount) {
@@ -1196,7 +1222,23 @@
   /* ============================================================
      Charts 页：品种选择 + 折线/K线 + 时间范围 + 成交量
      ============================================================ */
-  let chartState = { itemId: null, type: 'line', hours: 24 };
+  let chartState = { itemId: null, type: 'line', hours: 24, kline: 'hour' };
+
+  function syncChartRangeButtons() {
+    // 根据 chart type 显示对应按钮组 + 隐藏成交量（折线模式）
+    const lineBox  = document.getElementById('chart-range-line');
+    const klineBox = document.getElementById('chart-range-kline');
+    const volWrap  = document.getElementById('chart2-volume-wrapper');
+    if (chartState.type === 'line') {
+      if (lineBox)  lineBox.style.display  = '';
+      if (klineBox) klineBox.style.display = 'none';
+      if (volWrap)  volWrap.style.display  = 'none';
+    } else {
+      if (lineBox)  lineBox.style.display  = 'none';
+      if (klineBox) klineBox.style.display = '';
+      if (volWrap)  volWrap.style.display  = '';
+    }
+  }
 
   async function loadChartsPage() {
     const itemsResp = await fetchAPI('/api/items');
@@ -1214,6 +1256,7 @@
         document.querySelectorAll('.chart-type-btn').forEach(x => x.classList.remove('active'));
         b.classList.add('active');
         chartState.type = b.dataset.type;
+        syncChartRangeButtons();
         renderChart2();
       };
     });
@@ -1225,41 +1268,137 @@
         renderChart2();
       };
     });
+    document.querySelectorAll('.chart-kline-btn').forEach(b => {
+      b.onclick = () => {
+        document.querySelectorAll('.chart-kline-btn').forEach(x => x.classList.remove('active'));
+        b.classList.add('active');
+        chartState.kline = b.dataset.kline;
+        renderChart2();
+      };
+    });
     document.getElementById('chart-refresh').onclick = renderChart2;
+    syncChartRangeButtons();
     renderChart2();
+  }
+
+  // 把 raw points 按时间桶（小时 / 天）聚合成 OHLC + 成交量
+  // 注意：today_volume 是当日累计值，需要先算每个点的"增量"，再按桶求和
+  // - 同一天内：increment = today_volume[t] - today_volume[t-1]
+  // - 跨日（午夜 reset，delta 变负）：increment = today_volume[t]（新一天从 0 开始累计到这个值）
+  // - 第一个点：increment = 0（不知道之前累计了多少）
+  function aggregateBuckets(points, bucketMs) {
+    const sorted = [...points]
+      .filter(p => p.price != null)
+      .sort((a, b) => new Date(a.t) - new Date(b.t));
+
+    // Step 1：算每个点的成交增量
+    let prevVol = null;
+    const annotated = sorted.map(p => {
+      const curVol = p.today_volume || 0;
+      let inc = 0;
+      if (prevVol !== null) {
+        const delta = curVol - prevVol;
+        inc = delta < 0 ? curVol : delta;   // 跨日 reset：新一天的累计 = 当桶增量
+      }
+      prevVol = curVol;
+      return { ...p, _incVol: inc };
+    });
+
+    // Step 2：按桶聚合
+    const groups = new Map();
+    for (const p of annotated) {
+      const t = new Date(p.t).getTime();
+      const bucket = Math.floor(t / bucketMs) * bucketMs;
+      if (!groups.has(bucket)) groups.set(bucket, []);
+      groups.get(bucket).push(p);
+    }
+    return [...groups.entries()].sort((a, b) => a[0] - b[0]).map(([bucket, slice]) => {
+      const ps = slice.map(p => p.price);
+      const incSum = slice.reduce((s, p) => s + (p._incVol || 0), 0);
+      return {
+        t:      new Date(bucket).toISOString(),
+        bucket,
+        open:   ps[0],
+        high:   Math.max(...ps),
+        low:    Math.min(...ps),
+        close:  ps[ps.length - 1],
+        volume: incSum,           // 增量之和：时K = 该小时实际成交，日K = 当天总成交
+      };
+    });
   }
 
   async function renderChart2() {
     if (!chartState.itemId) return;
+
+    // 根据模式决定要拉多少小时
+    let fetchHours;
+    if (chartState.type === 'line') {
+      fetchHours = chartState.hours;            // 24 / 72 / 168
+    } else if (chartState.kline === 'hour') {
+      fetchHours = 72;                           // 时 K：最近 3 天 = 72 根
+    } else {
+      fetchHours = 30 * 24;                      // 日 K：最近 30 天
+    }
+
     const [itemResp, histResp] = await Promise.all([
       fetchAPI(`/api/items/${chartState.itemId}`),
-      fetchAPI(`/api/items/${chartState.itemId}/history?hours=${chartState.hours}`)
+      fetchAPI(`/api/items/${chartState.itemId}/history?hours=${fetchHours}`)
     ]);
     if (!itemResp || !histResp) return;
 
     document.getElementById('chart2-title').textContent = itemResp.name || itemResp.short_name;
     document.getElementById('chart2-stage').textContent = itemResp.current_stage || itemResp.phase || '—';
-    document.getElementById('chart2-meta').textContent =
-      `${itemResp.phase || ''} · 最近 ${chartState.hours}h · 共 ${histResp.count} 条数据点`;
+
+    // meta 文案根据模式
+    let metaText;
+    if (chartState.type === 'line') {
+      metaText = `${itemResp.phase || ''} · 折线 · 最近 ${chartState.hours}h · 共 ${histResp.count} 个数据点`;
+    } else if (chartState.kline === 'hour') {
+      metaText = `${itemResp.phase || ''} · 时K · 最近 72h`;
+    } else {
+      metaText = `${itemResp.phase || ''} · 日K · 最近 30 天`;
+    }
+    document.getElementById('chart2-meta').textContent = metaText;
     document.getElementById('chart2-price').textContent = fmtPrice(itemResp.price);
     const pctEl = document.getElementById('chart2-pct');
     pctEl.textContent = fmtPct(itemResp.today_pct) + ' 今日';
     pctEl.className = `text-sm font-medium ${pctClass(itemResp.today_pct)}`;
 
-    const points = histResp.history.filter(h => h.price != null);
-    if (points.length < 2) {
+    const rawPoints = histResp.history.filter(h => h.price != null);
+    if (rawPoints.length < 2) {
       document.getElementById('chart2-content').innerHTML =
         `<text x="400" y="160" text-anchor="middle" fill="#86868B" font-size="14">数据点不足，等监控积累...</text>`;
       return;
     }
+
+    // K 线模式 → 聚合
+    let candles = null;
+    if (chartState.type === 'kline') {
+      const bucketMs = chartState.kline === 'hour' ? 3600000 : 86400000;
+      candles = aggregateBuckets(rawPoints, bucketMs);
+      if (candles.length < 1) return;
+    }
+
     const W = 800, H = 320;
-    const prices = points.map(p => p.price);
-    const min = Math.min(...prices) * 0.998;
-    const max = Math.max(...prices) * 1.002;
-    const xStep = W / (points.length - 1);
+    const series = candles || rawPoints;     // 统一处理
+    const N = series.length;
+
+    // X 轴：按真实时间位置（让 12 小时空白真的成为空白，而不是被压缩成 1 格）
+    const tStart = new Date(series[0].t).getTime();
+    const tEnd   = new Date(series[N - 1].t).getTime();
+    const tRange = Math.max(1, tEnd - tStart);
+    const xPosOf = (p) => ((new Date(p.t).getTime() - tStart) / tRange) * W;
+    // 兼容老逻辑：xStep 用于折线 / hover 估算
+    const xStep = W / Math.max(1, N - 1);
+
+    // Y 轴范围
+    const allPrices = candles
+      ? candles.flatMap(c => [c.high, c.low])
+      : rawPoints.map(p => p.price);
+    const min = Math.min(...allPrices) * 0.998;
+    const max = Math.max(...allPrices) * 1.002;
     const yScale = p => H - ((p - min) / (max - min)) * H;
 
-    let content = '';
     // 网格线
     document.getElementById('chart2-grid').innerHTML = `
       <line x1="0" y1="${H*0.25}" x2="${W}" y2="${H*0.25}"/>
@@ -1267,79 +1406,110 @@
       <line x1="0" y1="${H*0.75}" x2="${W}" y2="${H*0.75}"/>
     `;
 
+    let content = '';
     if (chartState.type === 'line') {
-      // 折线图
-      let d = `M 0,${yScale(prices[0])}`;
-      for (let i = 1; i < prices.length; i++) {
-        const x = i * xStep;
-        const y = yScale(prices[i]);
-        const cx = x - xStep / 2;
-        const cy = (yScale(prices[i - 1]) + y) / 2;
-        d += ` Q ${cx},${cy} ${x},${y}`;
-      }
-      const dArea = d + ` L ${W},${H} L 0,${H} Z`;
+      // 折线图：按真实时间定位每个点
+      let d = '';
+      rawPoints.forEach((p, i) => {
+        const x = xPosOf(p);
+        const y = yScale(p.price);
+        if (i === 0) {
+          d = `M ${x},${y}`;
+        } else {
+          const prevX = xPosOf(rawPoints[i - 1]);
+          const prevY = yScale(rawPoints[i - 1].price);
+          const cx = (prevX + x) / 2;
+          const cy = (prevY + y) / 2;
+          d += ` Q ${cx},${cy} ${x},${y}`;
+        }
+      });
+      const lastX = xPosOf(rawPoints[rawPoints.length - 1]);
+      const firstX = xPosOf(rawPoints[0]);
+      const dArea = d + ` L ${lastX},${H} L ${firstX},${H} Z`;
       content = `
         <path d="${dArea}" fill="url(#ch2Area)"/>
         <path d="${d}" fill="none" stroke="url(#ch2Grad)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
       `;
     } else {
-      // K线图（用每小时聚合 OHLC，每 6 个 10min 点 = 1 小时）
-      const bars = [];
-      const groupSize = Math.max(1, Math.floor(points.length / 30));
-      for (let i = 0; i < points.length; i += groupSize) {
-        const slice = points.slice(i, i + groupSize);
-        const sp = slice.map(p => p.price);
-        bars.push({
-          x: i * xStep,
-          width: groupSize * xStep,
-          open: sp[0], high: Math.max(...sp), low: Math.min(...sp), close: sp[sp.length-1]
-        });
+      // K 线：每根 candle 按真实 bucket 时间定位
+      // candleW 取相邻 bucket 间最小间距的 70%，避免相邻 candle 重叠
+      let minGap = W;
+      for (let i = 1; i < candles.length; i++) {
+        const gap = xPosOf(candles[i]) - xPosOf(candles[i - 1]);
+        if (gap < minGap) minGap = gap;
       }
-      content = bars.map(b => {
-        const up = b.close >= b.open;
+      const candleW = Math.max(2, Math.min(20, minGap * 0.7));
+      content = candles.map((c) => {
+        const up = c.close >= c.open;
         const color = up ? '#10B981' : '#EF4444';
-        const bodyTop = yScale(Math.max(b.open, b.close));
-        const bodyBot = yScale(Math.min(b.open, b.close));
-        const wickTop = yScale(b.high);
-        const wickBot = yScale(b.low);
-        const cx = b.x + b.width / 2;
+        const bodyTop = yScale(Math.max(c.open, c.close));
+        const bodyBot = yScale(Math.min(c.open, c.close));
+        const wickTop = yScale(c.high);
+        const wickBot = yScale(c.low);
+        const cx = xPosOf(c);
         return `
           <line x1="${cx}" y1="${wickTop}" x2="${cx}" y2="${wickBot}" stroke="${color}" stroke-width="1"/>
-          <rect x="${b.x + b.width*0.15}" y="${bodyTop}" width="${b.width*0.7}" height="${Math.max(2, bodyBot-bodyTop)}" fill="${color}"/>
+          <rect x="${cx - candleW/2}" y="${bodyTop}" width="${candleW}" height="${Math.max(2, bodyBot-bodyTop)}" fill="${color}"/>
         `;
       }).join('');
     }
     document.getElementById('chart2-content').innerHTML = content;
 
-    // 成交量 — 柱子中心对齐数据点 x（与折线顶点 + 十字线对齐）
-    const vols = points.map(p => p.today_volume || 0);
-    const maxVol = Math.max(...vols, 1);
-    const VW = 800, VH = 80;
-    const vxStep = VW / Math.max(1, vols.length - 1);
-    const barW = vxStep * 0.7;        // 柱宽
-    const halfBar = barW / 2;
-    const volBars = points.map((p, i) => {
-      const v = p.today_volume || 0;
-      const h = (v / maxVol) * VH * 0.95;
-      const isUp = i > 0 && p.price >= points[i-1].price;
-      const color = isUp ? '#10B981' : '#EF4444';
-      const cx = i * vxStep;          // 数据点 x = 柱子中心
-      return `<rect x="${cx - halfBar}" y="${VH-h}" width="${barW}" height="${h}" fill="${color}" opacity="0.6"/>`;
-    }).join('');
-    document.getElementById('chart2-volume-content').innerHTML = volBars;
+    // 成交量（仅 K 线模式渲染；折线模式 wrapper 已被 syncChartRangeButtons 隐藏）
+    if (chartState.type === 'kline' && candles) {
+      const vols = candles.map(c => c.volume);
+      const maxVol = Math.max(...vols, 1);
+      const VW = 800, VH = 80;
+      // 同样按真实时间定位（保证和价格 candle 上下对齐）
+      const vxPosOf = (p) => ((new Date(p.t).getTime() - tStart) / tRange) * VW;
+      let vMinGap = VW;
+      for (let i = 1; i < candles.length; i++) {
+        const gap = vxPosOf(candles[i]) - vxPosOf(candles[i - 1]);
+        if (gap < vMinGap) vMinGap = gap;
+      }
+      const barW = Math.max(2, Math.min(20, vMinGap * 0.7));
+      const halfBar = barW / 2;
+      const volBars = candles.map((c) => {
+        const h = (c.volume / maxVol) * VH * 0.95;
+        const up = c.close >= c.open;
+        const color = up ? '#10B981' : '#EF4444';
+        const cx = vxPosOf(c);
+        return `<rect x="${cx - halfBar}" y="${VH-h}" width="${barW}" height="${h}" fill="${color}" opacity="0.6"/>`;
+      }).join('');
+      document.getElementById('chart2-volume-content').innerHTML = volBars;
+    }
 
-    // X 轴
-    const ts = points.filter((_, i) => i % Math.max(1, Math.floor(points.length/5)) === 0);
-    document.getElementById('chart2-xaxis').innerHTML = ts.map(p => {
-      const d = new Date(p.t);
-      const hh = d.getHours().toString().padStart(2,'0');
-      const mm = d.getMinutes().toString().padStart(2,'0');
-      return `<span>${hh}:${mm}</span>`;
-    }).join('');
+    // X 轴：在真实时间轴上均匀分布 ticks（不再按 series index 选）
+    const NUM_TICKS = 6;
+    const xaxisEl = document.getElementById('chart2-xaxis');
+    const fmtTick = (date) => {
+      const mo = (date.getMonth() + 1).toString().padStart(2, '0');
+      const da = date.getDate().toString().padStart(2, '0');
+      const hh = date.getHours().toString().padStart(2, '0');
+      const mm = date.getMinutes().toString().padStart(2, '0');
+      if (chartState.type === 'kline' && chartState.kline === 'day') return `${mo}-${da}`;
+      if (chartState.type === 'kline' && chartState.kline === 'hour') return `${mo}-${da} ${hh}h`;
+      if (chartState.type === 'line' && chartState.hours > 24) return `${mo}-${da} ${hh}h`;
+      return `${hh}:${mm}`;
+    };
+    // tStart / tEnd 已在上方计算
+    const tickHtml = [];
+    for (let i = 0; i < NUM_TICKS; i++) {
+      const tick = tStart + (tEnd - tStart) * (i / (NUM_TICKS - 1));
+      tickHtml.push(`<span>${fmtTick(new Date(tick))}</span>`);
+    }
+    xaxisEl.innerHTML = tickHtml.join('');
 
-    // 保存 hover 状态供 mousemove handler 用
+    // hover 状态：统一格式 ({t, price, today_volume, ...}) + 每个点的真实 x 坐标
+    const hoverPoints = candles
+      ? candles.map(c => ({ ...c, price: c.close, today_volume: c.volume }))
+      : rawPoints;
+    const hoverPosX = hoverPoints.map(p => xPosOf(p));
     _chartHoverState = {
-      points, xStep, yScale, W, H, VH,
+      points: hoverPoints,
+      posX:   hoverPosX,         // 每个点在 viewBox 里的真实 x
+      xStep, yScale, W, H, VH: 80,
+      mode: chartState.type,
       itemName: itemResp.name || itemResp.short_name,
     };
     setupChartHover();
@@ -1368,14 +1538,22 @@
       const relX = e.clientX - rect.left;
       const relY = e.clientY - rect.top;
 
-      // 算最近的数据点 idx
-      let idx = Math.round((relX / rect.width) * (st.points.length - 1));
-      idx = Math.max(0, Math.min(st.points.length - 1, idx));
+      // 把鼠标位置转成 viewBox x 坐标（W=800）
+      const mouseVBX = (relX / rect.width) * st.W;
+
+      // 找离鼠标最近的数据点（按真实 x 坐标，不是 index）
+      let idx = 0;
+      let minDist = Infinity;
+      const posArr = st.posX || st.points.map((_, i) => i * st.xStep);
+      for (let i = 0; i < posArr.length; i++) {
+        const d = Math.abs(posArr[i] - mouseVBX);
+        if (d < minDist) { minDist = d; idx = i; }
+      }
       const p = st.points[idx];
       if (p == null || p.price == null) return;
 
-      // 在 viewBox 坐标里画十字线 + 高亮点
-      const xVB = idx * st.xStep;
+      // 用真实位置画十字线 + 高亮点
+      const xVB = posArr[idx];
       const yVB = st.yScale(p.price);
 
       crosshair.setAttribute('x1', xVB);
@@ -1394,16 +1572,31 @@
       const d  = new Date(p.t);
       const dateStr = d.toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' });
       const timeStr = d.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false });
-      const tPctClr = p.today_pct == null ? '#9CA3AF' : (p.today_pct >= 0 ? '#34D399' : '#FB7185');
-      const wPctClr = p.week_pct == null ? '#9CA3AF' : (p.week_pct >= 0 ? '#34D399' : '#FB7185');
-      tooltip.innerHTML = `
-        <div style="opacity:0.7; font-size:10px; margin-bottom:4px;">${dateStr} ${timeStr}</div>
-        <div>价格 <span style="float:right; font-weight:600; margin-left:16px;">${fmtPrice(p.price)}</span></div>
-        ${p.today_pct != null ? `<div>今日 <span style="float:right; color:${tPctClr}; font-weight:600;">${p.today_pct >= 0 ? '+' : ''}${p.today_pct.toFixed(2)}%</span></div>` : ''}
-        ${p.week_pct != null ? `<div>本周 <span style="float:right; color:${wPctClr}; font-weight:600;">${p.week_pct >= 0 ? '+' : ''}${p.week_pct.toFixed(2)}%</span></div>` : ''}
-        <div>成交 <span style="float:right; font-weight:600;">${p.today_volume ?? 0}</span></div>
-        ${p.market_index != null ? `<div>大盘 <span style="float:right; opacity:0.7;">${p.market_index.toFixed(1)}</span></div>` : ''}
-      `;
+
+      // K 线模式：显示 OHLC；折线模式：显示原始字段
+      if (st.mode === 'kline' && p.open != null) {
+        const upClr = p.close >= p.open ? '#34D399' : '#FB7185';
+        const change = p.open ? ((p.close - p.open) / p.open * 100) : 0;
+        tooltip.innerHTML = `
+          <div style="opacity:0.7; font-size:10px; margin-bottom:4px;">${dateStr} ${timeStr}</div>
+          <div>开 <span style="float:right; font-weight:600; margin-left:16px;">${fmtPrice(p.open)}</span></div>
+          <div>高 <span style="float:right; color:#34D399; font-weight:600;">${fmtPrice(p.high)}</span></div>
+          <div>低 <span style="float:right; color:#FB7185; font-weight:600;">${fmtPrice(p.low)}</span></div>
+          <div>收 <span style="float:right; color:${upClr}; font-weight:600;">${fmtPrice(p.close)} (${change >= 0 ? '+' : ''}${change.toFixed(2)}%)</span></div>
+          <div>成交 <span style="float:right; font-weight:600;">${p.today_volume ?? 0}</span></div>
+        `;
+      } else {
+        const tPctClr = p.today_pct == null ? '#9CA3AF' : (p.today_pct >= 0 ? '#34D399' : '#FB7185');
+        const wPctClr = p.week_pct == null ? '#9CA3AF' : (p.week_pct >= 0 ? '#34D399' : '#FB7185');
+        tooltip.innerHTML = `
+          <div style="opacity:0.7; font-size:10px; margin-bottom:4px;">${dateStr} ${timeStr}</div>
+          <div>价格 <span style="float:right; font-weight:600; margin-left:16px;">${fmtPrice(p.price)}</span></div>
+          ${p.today_pct != null ? `<div>今日 <span style="float:right; color:${tPctClr}; font-weight:600;">${p.today_pct >= 0 ? '+' : ''}${p.today_pct.toFixed(2)}%</span></div>` : ''}
+          ${p.week_pct != null ? `<div>本周 <span style="float:right; color:${wPctClr}; font-weight:600;">${p.week_pct >= 0 ? '+' : ''}${p.week_pct.toFixed(2)}%</span></div>` : ''}
+          <div>成交 <span style="float:right; font-weight:600;">${p.today_volume ?? 0}</span></div>
+          ${p.market_index != null ? `<div>大盘 <span style="float:right; opacity:0.7;">${p.market_index.toFixed(1)}</span></div>` : ''}
+        `;
+      }
 
       // 定位 tooltip：默认右下，靠右边缘时翻转到左边
       const tipW = 160, tipH = 110, gap = 12;
@@ -1428,11 +1621,45 @@
      Positions 页
      ============================================================ */
   async function loadPositionsPage() {
-    const [portfolio, itemsResp] = await Promise.all([
+    const [portfolio, itemsResp, budget] = await Promise.all([
       fetchAPI('/api/portfolio'),
-      fetchAPI('/api/items')
+      fetchAPI('/api/items'),
+      fetchAPI('/api/global/budget'),
     ]);
 
+    // 1) 预算输入框回填
+    const budgetInput = document.getElementById('budget-input');
+    const budgetUsage = document.getElementById('budget-usage');
+    if (budgetInput && budget) {
+      budgetInput.value = budget.planned_total_cny || '';
+    }
+
+    // 2) 预算使用情况
+    if (budgetUsage) {
+      const pln = budget?.planned_total_cny || 0;
+      if (pln <= 0) {
+        budgetUsage.innerHTML = '<span class="text-amber-700">⚠️ 未设预算 — 设置后系统才能算"占总仓 %"。</span>';
+      } else if (portfolio && !portfolio.empty) {
+        const used = portfolio.total_cost || 0;
+        const usedPct = (used / pln * 100);
+        const remain = pln - used;
+        const usedColor = usedPct > 100 ? 'text-rose-600' : (usedPct > 80 ? 'text-amber-600' : 'text-emerald-600');
+        const barPct = Math.min(100, usedPct);
+        budgetUsage.innerHTML = `
+          <div class="flex items-baseline justify-between mb-2">
+            <span>已用 <strong class="${usedColor}">${fmtPrice(used)} (${usedPct.toFixed(1)}%)</strong></span>
+            <span>剩余 <strong>${fmtPrice(remain)}</strong></span>
+          </div>
+          <div class="h-2 rounded-full bg-black/[0.06] overflow-hidden">
+            <div class="h-full rounded-full transition-all" style="width: ${barPct}%; background: ${usedPct > 100 ? '#EF4444' : (usedPct > 80 ? '#F59E0B' : '#10B981')};"></div>
+          </div>
+        `;
+      } else {
+        budgetUsage.innerHTML = `预算 ${fmtPrice(budget.planned_total_cny)} · 当前还没有持仓`;
+      }
+    }
+
+    // 3) 总仓位汇总
     if (portfolio && !portfolio.empty) {
       const pnlClass = portfolio.total_pnl >= 0 ? 'text-emerald-600' : 'text-rose-600';
       document.getElementById('portfolio-content').innerHTML = `
@@ -1450,15 +1677,25 @@
     }
 
     if (itemsResp) {
+      const budgetVal = budget?.planned_total_cny || 0;
+      // 找到 portfolio.breakdown 里对应 item 的 pct_of_budget
+      const breakdownMap = {};
+      (portfolio?.breakdown || []).forEach(b => { breakdownMap[b.id] = b; });
+
       document.getElementById('positions-list').innerHTML = itemsResp.items.map(it => {
         const pos = it.position;
         const legacy = it.legacy;
+        const bd = breakdownMap[it.id] || {};
+        const pctOfBudget = bd.pct_of_budget;
+        const pctOfBudgetText = (budgetVal > 0 && pctOfBudget != null)
+          ? ` <span class="text-xs text-[var(--text-tertiary)]">（占总仓 ${(pctOfBudget*100).toFixed(1)}%）</span>`
+          : '';
         return `
           <div class="rounded-2xl p-5 bg-white border border-black/5">
-            <div class="font-medium mb-3">${it.short_name || it.name}</div>
+            <div class="font-medium mb-3">${it.short_name || it.name}${pctOfBudgetText}</div>
             ${pos ? `
               <div class="text-sm space-y-1 mb-3">
-                <div>新仓：<strong>${pos.total_pieces || 0} 把</strong>${pos.total_qty_pct ? ` <span class="text-xs text-[var(--text-tertiary)]">（占计划 ${(pos.total_qty_pct*100).toFixed(0)}%）</span>` : ''} @均价 ${fmtPrice(pos.avg_entry_price)}</div>
+                <div>新仓：<strong>${pos.total_pieces || 0} 把</strong> @均价 ${fmtPrice(pos.avg_entry_price)}  ·  成本 ${fmtPrice(bd.active_cost)}</div>
                 ${pos.pnl_pct != null ? `<div class="${pctClass(pos.pnl_pct*100)}">浮盈 ${fmtPct(pos.pnl_pct*100)}</div>` : ''}
                 <div class="text-xs text-[var(--text-tertiary)]">最高 ${fmtPrice(pos.highest_since_first_entry)}  ·  止盈已执行 ${(pos.tp_executed||[]).join(', ') || '无'}</div>
               </div>
@@ -1482,17 +1719,33 @@
                 </select>
                 <input type="number" step="0.01" min="0" placeholder="价格 ¥" class="text-xs px-2 py-1.5 rounded-lg border border-black/10 w-24" data-price>
                 <input type="number" step="0.01" min="0" placeholder="把数" class="text-xs px-2 py-1.5 rounded-lg border border-black/10 w-20" data-pieces>
-                <input type="number" step="1" min="0" max="100" placeholder="占计划% (选填)" class="text-xs px-2 py-1.5 rounded-lg border border-black/10 w-28" data-pct>
                 <button class="text-xs px-3 py-1.5 rounded-lg bg-indigo-600 text-white font-medium hover:bg-indigo-700 transition" onclick="submitPositionAction('${it.id}', this)">执行</button>
               </div>
               <div class="text-[11px] text-[var(--text-tertiary)] leading-relaxed">
-                加仓/卖出：填<strong>价格 + 把数</strong>，"占计划%"选填用于策略追踪。<br/>
-                设套牢仓：填<strong>均价 + 把数</strong>。移除套牢仓 / 清空新仓不需要填任何字段。
+                加仓/卖出/设套牢仓：填<strong>价格 + 把数</strong>。占总仓 % 由系统自动计算（基于上方总仓位预算）。<br/>
+                移除套牢仓 / 清空新仓不需要填任何字段。
               </div>
             </div>
           </div>
         `;
       }).join('');
+    }
+  }
+
+  // 保存总仓位预算
+  async function saveBudget() {
+    const val = parseFloat(document.getElementById('budget-input').value);
+    if (isNaN(val) || val < 0) return showToast('请输入正数', 'error');
+    const span = document.getElementById('budget-status');
+    span.textContent = '保存中...';
+    const res = await apiSend('/api/global/budget', 'POST', { planned_total_cny: val }, 5000);
+    if (res.ok) {
+      span.textContent = '✓ 已保存';
+      span.style.color = '#10B981';
+      loadPositionsPage();   // 刷新所有 % 显示
+    } else {
+      span.textContent = '✗ ' + res.error;
+      span.style.color = '#EF4444';
     }
   }
 
@@ -1502,19 +1755,16 @@
     const action = card.querySelector('[data-action]').value;
     const price  = parseFloat(card.querySelector('[data-price]').value);
     const pieces = parseFloat(card.querySelector('[data-pieces]').value);
-    const pctRaw = parseFloat(card.querySelector('[data-pct]').value);
 
     let path, body, method = 'POST';
     if (action === 'buy') {
       if (!price || !pieces) return showToast('价格和把数都必填', 'error');
       path = `/api/positions/${itemId}/buy`;
       body = { price, qty_pieces: pieces };
-      if (!isNaN(pctRaw) && pctRaw > 0) body.qty_pct = pctRaw / 100;
     } else if (action === 'sell') {
       if (!price || !pieces) return showToast('价格和把数都必填', 'error');
       path = `/api/positions/${itemId}/sell`;
       body = { price, qty_pieces: pieces };
-      if (!isNaN(pctRaw) && pctRaw > 0) body.qty_pct = pctRaw / 100;
     } else if (action === 'legacy') {
       if (!price || !pieces) return showToast('均价和把数都必填', 'error');
       path = `/api/positions/${itemId}/legacy`;

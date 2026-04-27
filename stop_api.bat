@@ -1,21 +1,24 @@
 @echo off
-REM stop_api.bat - 强制停止 Sentinel API（如果想手动关掉后台进程）
-REM 监控任务不受影响
+REM ============================================================
+REM stop_api.bat - Force stop Sentinel API server
+REM Monitor tasks (if any in Windows Task Scheduler) are unaffected.
+REM Kept fully ASCII to avoid Windows codepage issues.
+REM ============================================================
+
 chcp 65001 > nul
 
-echo 正在停止 Sentinel API...
+echo Stopping Sentinel API...
 
-REM 先尝试通过任务计划器停止（如果是它启动的）
+REM 1. Stop scheduled task version (if installed via setup_autostart.bat)
 schtasks /End /TN "Sentinel API Service" >nul 2>&1
 
-REM 然后杀掉所有占用 8000 端口的 python 进程
+REM 2. Kill any process listening on port 8000
 for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":8000.*LISTENING"') do (
     taskkill /F /PID %%a >nul 2>&1
 )
 
-REM 防止漏网，再杀一次所有 backend_api.py 相关 python
+REM 3. Belt-and-suspenders: kill any python.exe running backend_api.py
 wmic process where "name='python.exe' and commandline like '%%backend_api%%'" delete >nul 2>&1
 
-echo OK 完成。
-echo （监控任务仍在按计划运行）
+echo Done. ^(Monitor tasks in Windows Task Scheduler unaffected.^)
 pause

@@ -421,18 +421,39 @@ def sector_options():
     return {"sectors": SECTOR_OPTIONS}
 
 
+# ---------- 总仓位预算 ----------
+@app.get("/api/global/budget")
+def get_budget():
+    """读取总仓位预算（¥）。"""
+    state = _load_state_or_404()
+    return {"planned_total_cny": state.get("global", {}).get("planned_total_cny", 0) or 0}
+
+
+@app.post("/api/global/budget")
+def set_budget(body: BudgetRequest):
+    """设置总仓位预算。"""
+    if body.planned_total_cny < 0:
+        raise HTTPException(400, "预算必须 >= 0")
+    state = _load_state_or_404()
+    state.setdefault("global", {})["planned_total_cny"] = body.planned_total_cny
+    state_mod.save_state(state)
+    return {"ok": True, "planned_total_cny": body.planned_total_cny}
+
+
 # ---------- 仓位 ----------
 class BuyRequest(BaseModel):
     price: float
     qty_pieces: float            # 真实买入把数（必填，可小数）
-    qty_pct: Optional[float] = None  # 占计划满仓的比例 0-1（选填）
     note: Optional[str] = None
 
 
 class SellRequest(BaseModel):
     price: float
     qty_pieces: float            # 真实卖出把数
-    qty_pct: Optional[float] = None  # 占计划的比例（选填）
+
+
+class BudgetRequest(BaseModel):
+    planned_total_cny: float     # 总仓位预算 ¥
 
 
 class LegacyRequest(BaseModel):
@@ -450,13 +471,11 @@ def _find_item(state, item_id):
 
 @app.post("/api/positions/{item_id}/buy")
 def position_buy(item_id: str, body: BuyRequest):
-    """新建/加仓：往 position.tiers 推一档。"""
+    """新建/加仓：只需价格 + 把数。qty_pct 由系统从总仓预算自动计算。"""
     if body.qty_pieces <= 0:
         raise HTTPException(400, "qty_pieces 必须为正（真实买入把数）")
     if body.price <= 0:
         raise HTTPException(400, "price 必须为正")
-    if body.qty_pct is not None and (body.qty_pct <= 0 or body.qty_pct > 1):
-        raise HTTPException(400, "qty_pct 必须在 (0, 1] 区间，例如 0.3 = 30%")
     state = _load_state_or_404()
     item = _find_item(state, item_id)
     if not item:
@@ -466,11 +485,15 @@ def position_buy(item_id: str, body: BuyRequest):
         "highest_since_first_entry": None, "tp_executed": [],
     })
     tiers = pos.setdefault("tiers", [])
+    # 自动计算 qty_pct = 本笔成本 / 总仓预算（用户没设预算则为 0）
+    budget = state.get("global", {}).get("planned_total_cny", 0) or 0
+    cost = body.price * body.qty_pieces
+    auto_qty_pct = (cost / budget) if budget > 0 else 0
     new_tier = {
         "tier_idx": len(tiers) + 1,
         "entry_price": body.price,
         "qty_pieces": body.qty_pieces,
-        "qty_pct": body.qty_pct if body.qty_pct is not None else 0,
+        "qty_pct": auto_qty_pct,        # = cost / budget，自动算
         "entry_time": utils.now_iso(),
         "note": body.note or "",
         "source": "manual_dashboard",
@@ -484,7 +507,7 @@ def position_buy(item_id: str, body: BuyRequest):
         "type": "manual_buy",
         "price": body.price,
         "qty_pieces": body.qty_pieces,
-        "qty_pct": body.qty_pct,
+        "qty_pct": auto_qty_pct,
         "tier_idx": new_tier["tier_idx"],
         "note": body.note or "",
     })
@@ -539,7 +562,6 @@ def position_sell(item_id: str, body: SellRequest):
         "type": "manual_sell",
         "price": body.price,
         "qty_pieces": body.qty_pieces,
-        "qty_pct": body.qty_pct,
         "cleared": cleared,
     })
     state_mod.save_state(state)

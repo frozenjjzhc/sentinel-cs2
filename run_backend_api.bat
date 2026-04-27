@@ -1,5 +1,5 @@
 @echo off
-REM 启动 Sentinel 后端 API 服务（FastAPI on port 8000）
+REM Start Sentinel backend API service (FastAPI on port 8000)
 chcp 65001 > nul
 set PYTHONIOENCODING=utf-8
 set PYTHONUTF8=1

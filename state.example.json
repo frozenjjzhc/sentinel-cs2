@@ -10,6 +10,7 @@
     "fixed_stop_pct": 0.15,
     "trailing_stop_pct": 0.12,
     "dedup_window_hours": 4,
+    "planned_total_cny": 0,
     "tier_plan": {
       "entry_pct":          [0.30, 0.30, 0.40],
       "tp_levels_from_avg": [0.20, 0.40, 0.70],

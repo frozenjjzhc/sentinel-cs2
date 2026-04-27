@@ -90,22 +90,38 @@ def compute_summary(state: dict) -> dict:
     total_pnl = total_value - total_cost
     total_pnl_pct = total_pnl / total_cost if total_cost else 0
 
-    # Concentration
+    # 总仓位预算
+    budget = state.get("global", {}).get("planned_total_cny", 0) or 0
+    budget_used_pct = (total_cost / budget) if budget > 0 else None
+    budget_remaining = (budget - total_cost) if budget > 0 else None
+
+    # 给每个 item 加 pct_of_budget
+    if budget > 0:
+        for b in breakdown:
+            b["pct_of_budget"] = b["total_cost"] / budget
+
+    # Concentration（基于 budget 优先；否则回落到旧的"占总持仓 %"）
     item_costs = [(b["id"], b["total_cost"]) for b in breakdown]
     item_costs.sort(key=lambda kv: kv[1], reverse=True)
     top_id, top_cost = item_costs[0] if item_costs else (None, 0)
-    concentration_pct = top_cost / total_cost if total_cost else 0
+    if budget > 0:
+        concentration_pct = top_cost / budget          # 占总预算 %
+    else:
+        concentration_pct = top_cost / total_cost if total_cost else 0
 
     # Risk warnings
     warnings = []
     if concentration_pct > 0.7:
-        warnings.append(f"⚠️ 集中度过高：{top_id} 占总仓位 {concentration_pct*100:.1f}%")
+        ref = "总预算" if budget > 0 else "已建仓"
+        warnings.append(f"⚠️ 集中度过高：{top_id} 占{ref} {concentration_pct*100:.1f}%")
     if total_pnl_pct < -0.20:
         warnings.append(f"⚠️ 总浮亏 {total_pnl_pct*100:.1f}%，需评估止损")
     if total_active_cost > 0:
         active_pnl_pct = (total_active_value - total_active_cost) / total_active_cost
         if active_pnl_pct > 0.20:
             warnings.append(f"💡 新仓浮盈 {active_pnl_pct*100:.1f}%，关注止盈机会")
+    if budget > 0 and total_cost > budget:
+        warnings.append(f"⚠️ 已超出总预算 {(total_cost - budget):.0f} ¥")
 
     return {
         "total_cost": total_cost,
@@ -118,6 +134,9 @@ def compute_summary(state: dict) -> dict:
         "legacy_value": total_legacy_value,
         "concentration_top_id": top_id,
         "concentration_pct": concentration_pct,
+        "planned_total_cny": budget,
+        "budget_used_pct": budget_used_pct,
+        "budget_remaining": budget_remaining,
         "breakdown": breakdown,
         "warnings": warnings,
     }
