@@ -290,7 +290,7 @@
 
     <div class="reveal delay-4 mt-20 grid grid-cols-3 gap-12 max-w-3xl mx-auto">
       <div>
-        <div class="text-4xl font-semibold tracking-tight">4</div>
+        <div class="text-4xl font-semibold tracking-tight" data-hero-stat="items">0</div>
         <div class="text-sm text-[var(--text-secondary)] mt-1">监控品种</div>
       </div>
       <div>
@@ -1146,8 +1146,8 @@
   }
 
   function updateHeroStats(itemCount) {
-    const stats = document.querySelectorAll('[data-hero-stat]');
-    if (stats[0]) stats[0].firstChild.textContent = itemCount;
+    const el = document.querySelector('[data-hero-stat="items"]');
+    if (el) el.textContent = (itemCount ?? 0).toString();
   }
 
   function updateMarketDisplay(market) {
