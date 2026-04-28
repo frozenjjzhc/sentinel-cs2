@@ -415,6 +415,28 @@ def get_circuit_breaker():
 SECTOR_OPTIONS = ["一代手套", "二代手套", "三代手套", "武库", "千百战", "收藏品"]
 
 
+# ---------- Pydantic 请求模型（必须先于使用它们的端点定义） ----------
+class BuyRequest(BaseModel):
+    price: float
+    qty_pieces: float            # 真实买入把数（必填，可小数）
+    note: Optional[str] = None
+
+
+class SellRequest(BaseModel):
+    price: float
+    qty_pieces: float            # 真实卖出把数
+
+
+class BudgetRequest(BaseModel):
+    planned_total_cny: float     # 总仓位预算 ¥
+
+
+class LegacyRequest(BaseModel):
+    quantity: Optional[float] = None       # 把数（None + action=remove → 清除）
+    avg_entry_price: Optional[float] = None
+    action: Optional[str] = "set"          # set | remove
+
+
 @app.get("/api/sectors/options")
 def sector_options():
     """前端下拉用：固定板块列表。"""
@@ -438,28 +460,6 @@ def set_budget(body: BudgetRequest):
     state.setdefault("global", {})["planned_total_cny"] = body.planned_total_cny
     state_mod.save_state(state)
     return {"ok": True, "planned_total_cny": body.planned_total_cny}
-
-
-# ---------- 仓位 ----------
-class BuyRequest(BaseModel):
-    price: float
-    qty_pieces: float            # 真实买入把数（必填，可小数）
-    note: Optional[str] = None
-
-
-class SellRequest(BaseModel):
-    price: float
-    qty_pieces: float            # 真实卖出把数
-
-
-class BudgetRequest(BaseModel):
-    planned_total_cny: float     # 总仓位预算 ¥
-
-
-class LegacyRequest(BaseModel):
-    quantity: Optional[float] = None       # 把数（None + action=remove → 清除）
-    avg_entry_price: Optional[float] = None
-    action: Optional[str] = "set"          # set | remove
 
 
 def _find_item(state, item_id):
