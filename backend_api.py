@@ -82,7 +82,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="Sentinel CS2 Monitor API",
-    version="2.0.0",
+    version="2.1.0",
     description="本地状态文件 → REST API 桥接层 + 前端 dashboard + 嵌入式调度器。",
     lifespan=lifespan,
 )
@@ -582,6 +582,32 @@ def set_whale_toggle(body: WhaleToggleRequest):
     state.setdefault("global", {})["ignore_whale_signals"] = body.ignore_whale_signals
     state_mod.save_state(state)
     return {"ok": True, "ignore_whale_signals": body.ignore_whale_signals}
+
+
+@app.get("/api/global/data_dir")
+def get_data_dir():
+    """v2.1+：返回当前用户数据目录路径（state.json / shadow / cookies / logs 都在这）。"""
+    return {
+        "data_dir": config.DATA_DIR,
+        "project_dir": config.PROJECT_DIR,
+        "state_file": config.STATE_FILE,
+        "from_env": bool(os.environ.get("SENTINEL_DATA_DIR")),
+    }
+
+
+@app.post("/api/global/open_data_dir")
+def open_data_dir():
+    """在系统资源管理器里打开用户数据目录。"""
+    try:
+        if hasattr(os, "startfile"):
+            os.startfile(config.DATA_DIR)  # Windows
+        else:
+            import subprocess, sys as _sys
+            opener = "open" if _sys.platform == "darwin" else "xdg-open"
+            subprocess.Popen([opener, config.DATA_DIR])
+    except Exception as e:
+        raise HTTPException(500, f"无法打开数据目录：{e}")
+    return {"ok": True, "path": config.DATA_DIR}
 
 
 def _find_item(state, item_id):

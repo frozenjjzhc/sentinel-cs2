@@ -1242,6 +1242,31 @@
       <span id="scheduler-control-result" class="text-xs text-[var(--text-tertiary)]"></span>
     </div>
   </div>
+
+  <!-- ============================================================
+       数据目录（v2.1+）
+       ============================================================ -->
+  <div class="rounded-[28px] p-8 backdrop-blur-2xl"
+       style="background: rgba(255,255,255,0.65); border: 1px solid rgba(255,255,255,0.35);">
+    <div class="flex items-center justify-between mb-3">
+      <h3 class="text-lg font-medium">📁 数据目录</h3>
+      <span class="pill" style="font-size:11px;">v2.1+ 持久化</span>
+    </div>
+    <p class="text-xs text-[var(--text-tertiary)] mb-3">
+      所有用户数据（state.json / shadow / cookies / 截图 / 日志）保存在此目录，<b>跨版本升级 0 迁移</b>。
+      把新版本解压到任意位置，启动后会自动从这里读取数据。
+    </p>
+    <div class="p-3 rounded-xl bg-slate-50/80 border border-slate-200/60 mb-3">
+      <div class="text-xs text-[var(--text-tertiary)] mb-1">当前数据目录</div>
+      <code id="data-dir-path" class="text-xs font-mono break-all text-slate-700">检测中...</code>
+      <div id="data-dir-source" class="text-[11px] text-[var(--text-tertiary)] mt-1"></div>
+    </div>
+    <div class="flex flex-wrap gap-2">
+      <button onclick="openDataDir()" class="px-3 py-1.5 rounded-lg bg-indigo-50 text-indigo-700 text-xs font-medium hover:bg-indigo-100 transition">📂 打开数据目录</button>
+      <button onclick="copyDataDirPath()" class="px-3 py-1.5 rounded-lg bg-slate-100 text-slate-700 text-xs font-medium hover:bg-slate-200 transition">📋 复制路径</button>
+      <span id="data-dir-result" class="text-xs text-[var(--text-tertiary)] self-center"></span>
+    </div>
+  </div>
 </section>
 </div>
 
@@ -3050,6 +3075,68 @@ z &lt; -2  →  触发 MR-OVERSOLD</pre>
     await loadSchedulerStatus();
     // 加载庄家屏蔽开关
     await loadWhaleToggle();
+    // 加载数据目录信息（v2.1+）
+    await loadDataDirInfo();
+  }
+
+  // ============================================================
+  // 数据目录信息（v2.1+：用户数据持久化在 %APPDATA%\Sentinel\）
+  // ============================================================
+  let _cachedDataDir = null;
+  async function loadDataDirInfo() {
+    try {
+      const r = await fetch('/api/global/data_dir');
+      if (!r.ok) return;
+      const j = await r.json();
+      _cachedDataDir = j.data_dir;
+      const pathEl = document.getElementById('data-dir-path');
+      const srcEl  = document.getElementById('data-dir-source');
+      if (pathEl) pathEl.textContent = j.data_dir;
+      if (srcEl) {
+        if (j.from_env) {
+          srcEl.textContent = '来源：环境变量 SENTINEL_DATA_DIR';
+        } else if (j.data_dir.toLowerCase().includes('appdata')) {
+          srcEl.textContent = '来源：%APPDATA% (Windows 默认，跟随用户账号)';
+        } else if (j.data_dir === j.project_dir) {
+          srcEl.textContent = '来源：安装目录（兜底，未启用持久化）';
+        } else {
+          srcEl.textContent = '来源：用户主目录';
+        }
+      }
+    } catch (e) {}
+  }
+
+  async function openDataDir() {
+    const resEl = document.getElementById('data-dir-result');
+    try {
+      const r = await fetch('/api/global/open_data_dir', { method: 'POST' });
+      if (!r.ok) throw new Error(await r.text());
+      if (resEl) {
+        resEl.textContent = '✓ 已打开';
+        resEl.className = 'text-xs text-emerald-600 self-center';
+        setTimeout(() => { resEl.textContent = ''; resEl.className = 'text-xs text-[var(--text-tertiary)] self-center'; }, 2000);
+      }
+    } catch (e) {
+      if (resEl) {
+        resEl.textContent = '✗ 失败：' + e.message;
+        resEl.className = 'text-xs text-rose-600 self-center';
+      }
+    }
+  }
+
+  async function copyDataDirPath() {
+    if (!_cachedDataDir) return;
+    const resEl = document.getElementById('data-dir-result');
+    try {
+      await navigator.clipboard.writeText(_cachedDataDir);
+      if (resEl) {
+        resEl.textContent = '✓ 路径已复制';
+        resEl.className = 'text-xs text-emerald-600 self-center';
+        setTimeout(() => { resEl.textContent = ''; resEl.className = 'text-xs text-[var(--text-tertiary)] self-center'; }, 2000);
+      }
+    } catch (e) {
+      if (resEl) resEl.textContent = '✗ 剪贴板访问失败';
+    }
   }
 
   // ============================================================

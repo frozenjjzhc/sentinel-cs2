@@ -5,15 +5,37 @@
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![Platform: Windows](https://img.shields.io/badge/platform-Windows-lightgrey.svg)]()
 
-> 100% 本地化的 CS2 饰品价格监控、信号推送、仓位管理、回测分析平台。
-> 规则引擎 + 可选 LLM 语义层。配套苹果式极简多页 SPA。
+> ## 别的工具帮你找便宜货，Sentinel 帮你做决定
+>
+> **不是清单生成器，是深度跟踪器**。市面上的 CS2 工具大多解决"今天哪些饰品在异动"的**发现问题**；Sentinel 专攻另一边——**当你已经选定 4–20 件想长期跟踪的饰品，每个时点该不该加仓 / 该不该止盈 / 庄家阶段对不对**。
+>
+> 在自选池里做到的深度，是清单工具放不进去的：
+>
+> 🎯 **4 策略并跑 + shadow 横评** — 趋势同步 / RSI 反转 / 均值回归 / 半网格，active 推送，其他跟跑做实时胜率对比
+> 🌊 **6 庄家阶段识别** — 吸筹 / 洗盘 / 蓄力 / 拉升 / 派发 / 下跌，决定哪些信号生效
+> 🧠 **LLM bias 调节器** — Steam News 语义分类 → 实时调 BUY 优先级 + 止损/止盈乘数（每条推送带 `[bias=negative ×0.7]` 标签，复盘可追溯）
+> ⏳ **T+7 锁感知 + 套牢仓 LEGACY_ALERT** — CS2 原生时间语义，不是从股票工具硬搬
+> 🧾 **AI 参数提案需人工审批 + 自动备份原值** — LLM 不直接改阈值，写提案给你点 ✓/✗，应用前自动 backup 可回滚
+>
+> 100% 本地 · 规则引擎 + 可选 LLM 语义层 · 苹果式 6 页 SPA。
 
 > ⚠️ **免责声明**：本工具仅用于个人学习与价格监控，不构成任何投资建议。CS2 饰品交易具有风险，使用者自担一切责任。本项目与 Valve、Steam、SteamDT 等任何第三方公司**无关联**。
 
 ---
 
-## ✨ v2.0.0 重点（2026-04 发布）
+## ✨ 最新版本重点
 
+### v2.1.0（2026-04 发布）— 跨版本数据持久化
+| 维度 | 变化 |
+|---|---|
+| 📁 **数据目录搬家** | 用户数据默认搬到 **`%APPDATA%\Sentinel\`**（`C:\Users\<你>\AppData\Roaming\Sentinel\`），跨版本升级 **0 迁移成本** |
+| 🔄 **首次启动自动迁移** | v1.x / v2.0.x 老用户首次跑 v2.1+ 时自动复制老数据，旧文件保留作备份 |
+| 🛠️ **环境变量支持** | `SENTINEL_DATA_DIR` 自定义路径，支持多实例隔离 / 测试隔离 |
+| 🪟 **设置页可视化** | 「📁 数据目录」卡片：显示路径 + 来源，一键「📂 打开」/「📋 复制」 |
+
+> **从此朋友升级新版本只要覆盖代码，数据永远在那一个固定位置。再也不用手动复制 state.json 了。**
+
+### v2.0.0（2026-04 发布）— 多策略 + 视觉品牌重塑
 | 维度 | 变化 |
 |---|---|
 | 🧠 **多策略架构** | 单策略 → **4 套并行**（趋势同步 / RSI 反转 / 均值回归 / 半网格），active 推送，其他 shadow 跟跑做实时对比 |
@@ -233,6 +255,29 @@ schtasks /Create /TN "CS2 Daily Review" /TR "D:\claude\xuanxiao\run_daily_review
     schtasks /Change /TN $_ /ENABLE
 }
 ```
+
+### 4.6 升级到新版本（v2.1+ 起 0 迁移成本）
+
+从 **v2.1.0** 开始，用户数据搬到了 `%APPDATA%\Sentinel\`，跟代码完全分离 — **每次升级新版本只要覆盖代码，数据原封不动**。
+
+**v2.1+ 之间互升**（v2.1 → v2.2 / v3 / …）：
+```powershell
+# 解压新 zip 到任意位置 → 双击 Sentinel.bat → 数据自动从 %APPDATA% 读取
+```
+
+**从 v1.x / v2.0.x 升到 v2.1+**（有数据要迁移）：
+```powershell
+cd D:\你的旧 sentinel 目录
+# 解压新 zip 到临时目录
+Expand-Archive Sentinel-v2.1.0.zip -DestinationPath $env:TEMP\sentinel-v21 -Force
+$src = "$env:TEMP\sentinel-v21\sentinel-cs2"
+# 只覆盖代码（数据原封不动，首次启动会自动迁移到 %APPDATA%\Sentinel\）
+Copy-Item "$src\*.py","$src\*.bat","$src\*.md","$src\requirements.txt","$src\state.example.json" . -Force
+Copy-Item "$src\lib","$src\frontend" . -Recurse -Force
+.\Sentinel.bat
+```
+
+**git 用户**：`git pull origin main` 即可。
 
 ---
 
@@ -475,7 +520,7 @@ D:\claude\xuanxiao\
 │   ├── ★ llm_provider.py            通用 LLM 客户端（多 provider）
 │   └── ★ llm_analyst.py             业务模块：新闻/复盘/参数提案
 │
-├── 💾 数据
+├── 💾 数据（v2.1+ 默认搬到 %APPDATA%\Sentinel\）
 │   ├── m4a4_buzz_kill_state.json    实时状态（核心）
 │   ├── shadow_signals.json          影子回测记录
 │   ├── m4a4_errors.log              错误日志
@@ -650,6 +695,27 @@ Copy-Item m4a4_buzz_kill_state.json m4a4_buzz_kill_state.json.bak
 Copy-Item state.example.json m4a4_buzz_kill_state.json
 ```
 然后到设置页重填总预算、PushPlus token 即可。
+
+### 10.8 v2.1+ 数据目录在哪？想换怎么换？
+
+**默认位置**：`C:\Users\<你>\AppData\Roaming\Sentinel\`
+
+设置页 →「📁 数据目录」卡片有「📂 打开数据目录」按钮，一键定位。
+
+**想换位置（多实例 / 测试 / 移动）**：
+```powershell
+# 启动前设置环境变量
+$env:SENTINEL_DATA_DIR = "D:\我的备用 sentinel 数据"
+.\Sentinel.bat
+```
+
+**想退回旧行为（数据放安装目录）**：
+```powershell
+$env:SENTINEL_DATA_DIR = "D:\sentinel-cs2"   # 安装目录
+.\Sentinel.bat
+```
+
+**完全干净重来**：直接删掉 `%APPDATA%\Sentinel\` 整个目录，下次启动会从空状态开始。
 
 ---
 

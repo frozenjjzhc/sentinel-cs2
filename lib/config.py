@@ -5,17 +5,82 @@ but these are sane defaults / fallbacks.
 """
 
 import os
+import shutil
 
 # ============================================================
 # Paths
 # ============================================================
 PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-STATE_FILE = os.path.join(PROJECT_DIR, "m4a4_buzz_kill_state.json")
-ERROR_LOG = os.path.join(PROJECT_DIR, "m4a4_errors.log")
-PLAYWRIGHT_PROFILE = os.path.join(PROJECT_DIR, ".playwright_profile")
-SCREENSHOT_DIR = os.path.join(PROJECT_DIR, "screenshots")
-LOGS_DIR = os.path.join(PROJECT_DIR, "logs")
-DAILY_KLINE_DIR = os.path.join(PROJECT_DIR, "daily_kline")
+
+
+# v2.1.0+：用户数据目录与代码目录分离，跨版本升级 0 迁移成本。
+#
+# 优先级：
+#   1. SENTINEL_DATA_DIR 环境变量（高级用户多实例隔离用）
+#   2. %APPDATA%\Sentinel\           Windows 默认，跟随用户账号 + 系统备份
+#   3. ~/.local/share/sentinel       Linux/Mac 兜底
+#   4. PROJECT_DIR                   最终兜底（保持老行为）
+def _resolve_data_dir():
+    env = os.environ.get("SENTINEL_DATA_DIR")
+    if env:
+        return env
+    appdata = os.environ.get("APPDATA")
+    if appdata:
+        return os.path.join(appdata, "Sentinel")
+    home = os.path.expanduser("~")
+    if home != "~":
+        return os.path.join(home, ".local", "share", "sentinel")
+    return PROJECT_DIR
+
+
+DATA_DIR = _resolve_data_dir()
+os.makedirs(DATA_DIR, exist_ok=True)
+
+
+# 首次启动自动迁移：DATA_DIR 没数据但 PROJECT_DIR 有 → 复制过去（旧文件保留作备份，不删）
+def _migrate_legacy_once():
+    target = os.path.join(DATA_DIR, "m4a4_buzz_kill_state.json")
+    if os.path.isfile(target):
+        return  # 已经在新位置了，无需迁移
+    legacy = os.path.join(PROJECT_DIR, "m4a4_buzz_kill_state.json")
+    if not os.path.isfile(legacy):
+        return  # 全新安装，没有老数据可迁
+    # 文件
+    for f in [
+        "m4a4_buzz_kill_state.json",
+        "m4a4_buzz_kill_state.json.bak",
+        "shadow_signals.json",
+        "m4a4_errors.log",
+    ]:
+        src = os.path.join(PROJECT_DIR, f)
+        dst = os.path.join(DATA_DIR, f)
+        if os.path.isfile(src) and not os.path.isfile(dst):
+            try:
+                shutil.copy2(src, dst)
+            except Exception as e:
+                print(f"[Sentinel] 迁移 {f} 失败：{e}")
+    # 目录
+    for d in [".playwright_profile", "screenshots", "logs", "daily_kline"]:
+        src = os.path.join(PROJECT_DIR, d)
+        dst = os.path.join(DATA_DIR, d)
+        if os.path.isdir(src) and not os.path.isdir(dst):
+            try:
+                shutil.copytree(src, dst)
+            except Exception as e:
+                print(f"[Sentinel] 迁移目录 {d} 失败：{e}")
+    print(f"[Sentinel] 首次启动 v2.1+：用户数据已从 {PROJECT_DIR} 迁移到 {DATA_DIR}")
+    print(f"[Sentinel] 旧文件保留作备份，确认无问题后可手动删除。")
+
+
+_migrate_legacy_once()
+
+
+STATE_FILE = os.path.join(DATA_DIR, "m4a4_buzz_kill_state.json")
+ERROR_LOG = os.path.join(DATA_DIR, "m4a4_errors.log")
+PLAYWRIGHT_PROFILE = os.path.join(DATA_DIR, ".playwright_profile")
+SCREENSHOT_DIR = os.path.join(DATA_DIR, "screenshots")
+LOGS_DIR = os.path.join(DATA_DIR, "logs")
+DAILY_KLINE_DIR = os.path.join(DATA_DIR, "daily_kline")
 
 # ============================================================
 # Frequencies (minutes)

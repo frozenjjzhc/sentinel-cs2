@@ -5,6 +5,43 @@
 
 ---
 
+## [2.1.0] — 2026-04-28
+
+### 新增
+- **跨版本数据持久化**：用户数据（`state.json` / shadow / `.playwright_profile/` / `screenshots/` / `logs/` / `m4a4_errors.log`）默认保存到 **`%APPDATA%\Sentinel\`**，跨版本升级 0 迁移成本。
+- **首次启动自动迁移**：v1.x / v2.0.x 用户首次跑 v2.1+，会自动把安装目录里的老数据复制到 `%APPDATA%\Sentinel\`，旧文件保留作备份。
+- **`SENTINEL_DATA_DIR` 环境变量**：高级用户可自定义数据目录（用于多实例隔离 / 测试环境隔离）。
+- **设置页 → 数据目录卡片**：显示当前路径来源，提供「📂 打开数据目录」+「📋 复制路径」按钮。
+- 新端点：`GET /api/global/data_dir`（返回路径详情）、`POST /api/global/open_data_dir`（在资源管理器打开）。
+
+### 升级须知
+- 从 v1.x / v2.0.x 升级到 v2.1+：直接覆盖代码即可，无需手动迁移 state.json。第一次启动时控制台会打印迁移日志。
+- 旧安装目录里的 state.json 等文件**不会被删除**，作为备份保留。确认 v2.1 跑稳之后可以手动清理。
+- 重装 Windows 时，`%APPDATA%\Sentinel\` 会跟随系统备份 / OneDrive 同步还原。
+- 想换回旧行为（数据放安装目录）：设置 `SENTINEL_DATA_DIR=<安装目录>` 环境变量即可。
+
+### 路径示意
+```
+旧（v2.0.x 及之前）：
+  D:\sentinel-cs2\                       ← 代码 + 数据全在一起
+    ├── m4a4_buzz_kill_state.json        ← 数据
+    ├── *.py / *.bat                      ← 代码
+    └── ...
+
+新（v2.1+）：
+  D:\sentinel-cs2\                       ← 仅代码（每次升级整体覆盖）
+    ├── *.py / *.bat / lib/ / frontend/
+    └── ...
+  C:\Users\<你>\AppData\Roaming\Sentinel\ ← 仅数据（跨版本永驻）
+    ├── m4a4_buzz_kill_state.json
+    ├── shadow_signals.json
+    ├── .playwright_profile/
+    ├── screenshots/ / logs/
+    └── ...
+```
+
+---
+
 ## [2.0.0] — 2026-04-28
 
 ### 重大变更
@@ -87,6 +124,7 @@
 - K 线截图归档、影子仓位回测、bias 调节器
 - 可选 LLM 接入（Anthropic / OpenAI / DeepSeek）
 
+[2.1.0]: https://github.com/frozenjjzhc/sentinel-cs2/releases/tag/v2.1.0
 [2.0.0]: https://github.com/frozenjjzhc/sentinel-cs2/releases/tag/v2.0.0
 [1.2.1]: https://github.com/frozenjjzhc/sentinel-cs2/releases/tag/v1.2.1
 [1.2.0]: https://github.com/frozenjjzhc/sentinel-cs2/releases/tag/v1.2.0
