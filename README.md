@@ -754,5 +754,3 @@ Copy-Item state.example.json m4a4_buzz_kill_state.json
 ```
 
 🟢 **100% 数据本地化** · **规则引擎 + 可选 LLM 双层** · **完全开源可定制**
-
-有问题或想加新功能，找 Claude 主对话即可。
