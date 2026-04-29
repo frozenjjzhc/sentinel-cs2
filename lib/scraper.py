@@ -162,10 +162,51 @@ class SteamDTScraper:
     # ------------------------------------------------------------
     def fetch_item(self, item: dict) -> dict:
         url = item["url"]
+        image_url = None
         try:
             self._page.goto(url, wait_until="domcontentloaded")
             self._page.wait_for_timeout(config.PAGE_LOAD_WAIT_MS)
             text = self._page.inner_text("body")
+            # 尝试抓饰品主图。优先级：
+            # 1) img.zbt.com/e/steam/item/730/<base64-饰品名>.png  ← 真正的饰品独立图
+            # 2) cdn.steamdt.com/common/<uuid>.webp 且 >=200x200，但要排除已知的共用 banner UUID
+            # 3) 兼容旧 Steam 官方 CDN
+            try:
+                image_url = self._page.evaluate("""() => {
+                    const imgs = Array.from(document.querySelectorAll('img'));
+                    // SteamDT 页面顶部共用资源（每个页面都一样，不是饰品图）需要跳过
+                    const SHARED_BANNERS = [
+                        'c2c8ea0d-45d8-47df-a528-8665d48d5c53',  // 顶部 300x300 共用 banner
+                    ];
+                    // 1) img.zbt.com 饰品独立图（最优先）
+                    for (const img of imgs) {
+                        const src = img.src || '';
+                        if (src.includes('img.zbt.com/e/steam/item/')) return src;
+                    }
+                    // 2) cdn.steamdt.com/common/<uuid>.webp，跳过共用 banner
+                    for (const img of imgs) {
+                        const src = img.src || '';
+                        if (src.includes('cdn.steamdt.com/common/') &&
+                            /\\.(webp|png|jpg|jpeg)$/i.test(src) &&
+                            (img.naturalWidth || 0) >= 200 &&
+                            (img.naturalHeight || 0) >= 200 &&
+                            !SHARED_BANNERS.some(b => src.includes(b))) {
+                            return src;
+                        }
+                    }
+                    // 3) 兼容：Steam 官方 CDN
+                    for (const img of imgs) {
+                        const src = img.src || '';
+                        if (src.includes('steamstatic') ||
+                            src.includes('steamcommunity-a') ||
+                            src.includes('cloudflare.steamstatic')) {
+                            return src;
+                        }
+                    }
+                    return null;
+                }""")
+            except Exception:
+                pass
         except Exception as e:
             return {"price": None, "_error": str(e)}
 
@@ -219,6 +260,7 @@ class SteamDTScraper:
             "month_pct": month_pct,
             "today_volume": today_volume,
             "stock": stock,
+            "image_url": image_url,   # Steam CDN 饰品图（首次抓取时存到 item.image_url）
         }
 
     def screenshot_kline(self, save_path: str, debug: bool = False, view: str = "日K") -> tuple:

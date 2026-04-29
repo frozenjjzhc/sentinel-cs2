@@ -11,6 +11,15 @@
     "trailing_stop_pct": 0.12,
     "dedup_window_hours": 4,
     "planned_total_cny": 0,
+    "ignore_whale_signals": false,
+    "active_strategy": "phase-sync-v1",
+    "strategies": {
+      "phase-sync-v1": {
+        "name": "Sentinel · 分阶共振 V1",
+        "enabled": true,
+        "description": "6 阶段识别 + 多层过滤 + bias 调节，针对 CS2 高波动 + T+7 锁仓优化"
+      }
+    },
     "tier_plan": {
       "entry_pct":          [0.30, 0.30, 0.40],
       "tp_levels_from_avg": [0.20, 0.40, 0.70],

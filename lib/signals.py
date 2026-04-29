@@ -104,8 +104,16 @@ def get_next_tier(item):
 # ============================================================
 # Whale signal helpers
 # ============================================================
+def whale_signals_enabled(state_obj) -> bool:
+    """用户可在设置中关闭庄家相关逻辑。默认开启（False = 不屏蔽）。"""
+    return not state_obj.get("global", {}).get("ignore_whale_signals", False)
+
+
 def get_active_whale_signal(state_obj, item):
-    """Find a non-expired whale signal applicable to this item."""
+    """Find a non-expired whale signal applicable to this item.
+    返回 None 如果用户屏蔽了庄家信号。"""
+    if not whale_signals_enabled(state_obj):
+        return None
     fundamentals = state_obj.get("global", {}).get("fundamentals", {})
     for whale in fundamentals.get("whale_signals", []):
         if whale.get("expired"):
@@ -341,10 +349,16 @@ def evaluate_stop_loss(state_obj, item, ind) -> list:
     rapid_drop = rapid_drop_raw * stop_mult
     bias_tag = f"[bias={bias} ×{stop_mult}]" if stop_mult != 1.0 else ""
 
-    # A1 fixed stop: whale-floor-aware
+    # A1 fixed stop: whale-floor-aware（受 ignore_whale_signals 开关影响）
     whale_stop_price = T.get("use_whale_stop_price")
     whale_active_until = item.get("whale_active_until")
-    if whale_stop_price and whale_active_until and not utils.is_expired(whale_active_until):
+    use_whale_stop = (
+        whale_signals_enabled(state_obj)
+        and whale_stop_price
+        and whale_active_until
+        and not utils.is_expired(whale_active_until)
+    )
+    if use_whale_stop:
         if P < whale_stop_price:
             return [{
                 "label": "A1-WHALE-STOP",

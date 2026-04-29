@@ -251,8 +251,9 @@ def update_fundamentals(state: dict, frequency_days: int = 7) -> bool:
     fund["next_check_due"] = next_due_dt.isoformat()
     fund["emergency_keywords_detected"] = emergency_detected
 
-    # Bias logic: if whale signals are active, keep positive_with_whale_buy
-    has_active_whale = any(
+    # Bias logic: if whale signals are active AND not muted, keep positive_with_whale_buy
+    whale_muted = state.get("global", {}).get("ignore_whale_signals", False)
+    has_active_whale = (not whale_muted) and any(
         not w.get("expired") and not utils.is_expired(w.get("expires_at"))
         for w in fund.get("whale_signals", [])
     )

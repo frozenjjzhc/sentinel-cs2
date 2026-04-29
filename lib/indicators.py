@@ -132,3 +132,90 @@ def compute_change_pct(history: list, hours_back: float) -> float:
     if not p_now or not p_then:
         return 0
     return (p_now - p_then) / p_then
+
+
+# ============================================================
+# 日线降采样 + RSI 计算（用于 RSI Mean Reversion 策略）
+# ============================================================
+def daily_closes(history: list, num_days: int = 30) -> list:
+    """
+    把 10 分钟级 history 降采样为日收盘价列表。
+    取每个日期的最后一个 price 作为该日 close。
+    返回最近 num_days 天的 close 价（按时间升序）。
+    """
+    from datetime import datetime
+    if not history:
+        return []
+    daily_map = {}
+    for h in history:
+        if h.get("price") is None:
+            continue
+        try:
+            d = datetime.fromisoformat(h["t"]).date()
+        except Exception:
+            continue
+        daily_map[d] = h["price"]   # 后值覆盖前值 = 当日 close
+    sorted_days = sorted(daily_map.keys())[-num_days:]
+    return [daily_map[d] for d in sorted_days]
+
+
+def compute_rsi(closes: list, period: int = 14) -> float:
+    """
+    Wilder's RSI on a list of closing prices (oldest → newest).
+    Returns RSI ∈ [0, 100], or None if data insufficient.
+    """
+    if not closes or len(closes) < period + 1:
+        return None
+    gains, losses = [], []
+    for i in range(1, len(closes)):
+        diff = closes[i] - closes[i - 1]
+        if diff > 0:
+            gains.append(diff)
+            losses.append(0)
+        else:
+            gains.append(0)
+            losses.append(-diff)
+    # Initial avg from first `period` deltas
+    avg_gain = sum(gains[:period]) / period
+    avg_loss = sum(losses[:period]) / period
+    # Wilder smoothing for the rest
+    for i in range(period, len(gains)):
+        avg_gain = (avg_gain * (period - 1) + gains[i]) / period
+        avg_loss = (avg_loss * (period - 1) + losses[i]) / period
+    if avg_loss == 0:
+        return 100.0
+    rs = avg_gain / avg_loss
+    return 100.0 - 100.0 / (1.0 + rs)
+
+
+def compute_daily_rsi(history: list, period: int = 14) -> float:
+    """便捷封装：直接从 raw history 算日线 RSI。"""
+    closes = daily_closes(history, num_days=period + 5)
+    return compute_rsi(closes, period=period)
+
+
+# ============================================================
+# 价格分布统计 + z-score（用于 Mean Reversion 策略）
+# ============================================================
+def compute_daily_zscore(history: list, lookback_days: int = 20):
+    """
+    日线 z-score：当前价距 N 日均价的标准差倍数。
+    返回 (z_score, mean, std) 元组；数据不足返回 (None, None, None)。
+
+    z = (P - mean_N) / std_N
+
+    z = -2 表示 "当前价比 N 日均价低 2 个标准差"（统计上罕见，约 5% 概率）。
+    """
+    closes = daily_closes(history, num_days=lookback_days + 1)
+    if len(closes) < lookback_days:
+        return None, None, None
+    sample = closes[-lookback_days - 1:-1]   # 不含最新（最新是当前）
+    if len(sample) < 2:
+        return None, None, None
+    m = sum(sample) / len(sample)
+    var = sum((x - m) ** 2 for x in sample) / (len(sample) - 1)   # 样本方差
+    sd = var ** 0.5
+    if sd <= 0:
+        return None, m, 0
+    P = closes[-1]
+    return (P - m) / sd, m, sd

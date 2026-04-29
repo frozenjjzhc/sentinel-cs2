@@ -31,6 +31,7 @@ from lib import stages as stages_mod
 from lib import signals as signals_mod
 from lib import pusher
 from lib import shadow
+from lib import strategies as strategies_mod
 
 
 def make_history_entry(scrape_data: dict, market: dict) -> dict:
@@ -166,6 +167,10 @@ def run_cycle(test_mode: bool = False, verbose: bool = False):
             if verbose:
                 print(f"    Scraped: {scraped}")
 
+            # 首次抓到 Steam CDN 图片 URL → 存到 item.image_url（之后不再覆盖）
+            if scraped.get("image_url") and not item.get("image_url"):
+                item["image_url"] = scraped["image_url"]
+
             price = scraped.get("price")
             if price is None:
                 utils.log_error(
@@ -191,13 +196,21 @@ def run_cycle(test_mode: bool = False, verbose: bool = False):
             # 6. Position summary
             state_mod.compute_position_summary(item)
 
-            # 7. BUY signals
-            buy_signals = signals_mod.evaluate_buy_signals(state_obj, item, ind, stage, market)
+            # 7. BUY signals — 多策略评估
+            #    - active 策略：拿到的信号会经历 dedup → push → shadow
+            #    - inactive 策略：仅记录 shadow 用于策略对比（不推送、不影响真实操作）
+            active_strategy = strategies_mod.get_active_id(state_obj)
+            all_strategy_results = strategies_mod.evaluate_all(state_obj, item, ind, stage, market)
+            buy_signals = all_strategy_results.get(active_strategy, [])
 
-            # 8. Stop-loss (T+7 advisory)
+            # 7b. 网格策略独有：SELL 信号（达到卖点 + T+7 已解锁）
+            grid_sell_signals = strategies_mod.evaluate_sell(state_obj, item, ind, active_strategy)
+
+            # 8. Stop-loss (T+7 advisory) — 不分策略，统一规则
             stop_signals = signals_mod.evaluate_stop_loss(state_obj, item, ind)
 
-            all_signals = stop_signals + buy_signals
+            all_signals = stop_signals + grid_sell_signals + buy_signals
+            all_signals.sort(key=lambda s: s.get("priority", 0), reverse=True)
             chosen_signal = all_signals[0] if all_signals else None
 
             # 9. Dedup check
@@ -226,13 +239,14 @@ def run_cycle(test_mode: bool = False, verbose: bool = False):
                     item["last_signal_pushed"] = chosen_signal["label"]
                     item["last_signal_time"] = utils.now_iso()
                     state_mod.append_recommendation_log(item, make_recommendation_log(item, ind, chosen_signal))
-                    # Shadow position record (only for BUY signals)
+                    # Shadow position record for ACTIVE strategy（only BUY）
                     if chosen_signal.get("category") == "BUY":
                         shadow.record_signal(
                             item_id=item["id"],
                             label=chosen_signal["label"],
                             category="BUY",
                             entry_price=ind.get("P"),
+                            strategy=active_strategy,
                             context={
                                 "stage": stage,
                                 "today_pct": item["history"][-1].get("today_pct"),
@@ -240,6 +254,37 @@ def run_cycle(test_mode: bool = False, verbose: bool = False):
                                 "fundamentals_bias": state_obj.get("global", {}).get("fundamentals", {}).get("bias"),
                             },
                         )
+                    # 网格策略：信号推送后更新 grid_state（标记该档已买入或已卖出）
+                    if chosen_signal.get("grid_action"):
+                        strategies_mod.apply_grid_fill(item, chosen_signal, fill_price=ind.get("P"))
+
+            # 10b. Shadow 双跟跑：记录 INACTIVE 策略的"假想"信号（用于策略对比）
+            #      不推送给用户，仅记到 shadow_signals.json，4 小时内同信号自动 dedup
+            for sid, sigs in all_strategy_results.items():
+                if sid == active_strategy:
+                    continue   # active 已在上面处理
+                if not sigs:
+                    continue
+                first = sigs[0]
+                if first.get("category") != "BUY":
+                    continue
+                if shadow.has_recent_signal(item["id"], sid, first["label"], hours=4):
+                    continue   # 4 小时内已记过 → dedup
+                shadow.record_signal(
+                    item_id=item["id"],
+                    label=first["label"],
+                    category="BUY",
+                    entry_price=ind.get("P"),
+                    strategy=sid,
+                    context={
+                        "stage": stage,
+                        "today_pct": item["history"][-1].get("today_pct"),
+                        "market_index": market.get("market_index"),
+                        "fundamentals_bias": state_obj.get("global", {}).get("fundamentals", {}).get("bias"),
+                        "what_if": True,            # 标记：这是"假想"信号，未推送
+                        "active_strategy_at_record": active_strategy,
+                    },
+                )
 
             # 11. Signal log
             sig_entry = make_signal_log(item, ind, stage, chosen_signal)

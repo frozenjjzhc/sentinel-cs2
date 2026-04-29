@@ -209,6 +209,213 @@
   .pill.green  { background: rgba(34,197,94,0.08); color: #16A34A; border-color: rgba(34,197,94,0.18); }
   .pill.amber  { background: rgba(245,158,11,0.08); color: #D97706; border-color: rgba(245,158,11,0.18); }
   .pill.rose   { background: rgba(236,72,153,0.08); color: #DB2777; border-color: rgba(236,72,153,0.18); }
+
+  /* ============================================================
+     ⭐ Liquid Glass — 加强版（白底也能看出明显玻璃质感）
+     ============================================================ */
+  .liquid-glass {
+    position: relative;
+    background:
+      linear-gradient(135deg, rgba(255,255,255,0.85) 0%, rgba(255,255,255,0.55) 100%);
+    backdrop-filter: blur(20px) saturate(200%);
+    -webkit-backdrop-filter: blur(20px) saturate(200%);
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    box-shadow:
+      inset 0 1px 1px rgba(255, 255, 255, 0.9),
+      inset 0 -1px 0 rgba(99, 102, 241, 0.08),
+      0 16px 40px -12px rgba(99, 102, 241, 0.18),
+      0 4px 16px -4px rgba(15, 23, 42, 0.08);
+    overflow: hidden;
+  }
+  /* 顶部高光带（玻璃顶部反光） */
+  .liquid-glass::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; height: 50%;
+    background: linear-gradient(
+      to bottom,
+      rgba(255, 255, 255, 0.5) 0%,
+      rgba(255, 255, 255, 0) 100%
+    );
+    pointer-events: none;
+    border-radius: inherit;
+  }
+  /* 内部光流（conic 旋转） */
+  .liquid-glass::after {
+    content: '';
+    position: absolute;
+    top: -50%; left: -50%;
+    width: 200%; height: 200%;
+    background: conic-gradient(
+      from 0deg,
+      transparent 0deg,
+      rgba(99, 102, 241, 0.20) 80deg,
+      transparent 160deg,
+      rgba(236, 72, 153, 0.15) 240deg,
+      transparent 320deg,
+      rgba(99, 102, 241, 0.20) 360deg
+    );
+    pointer-events: none;
+    animation: liquidShimmer 14s linear infinite;
+    z-index: 0;
+  }
+  .liquid-glass > * { position: relative; z-index: 1; }
+  @keyframes liquidShimmer {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+  }
+  .liquid-glass.dark {
+    background: rgba(15, 23, 42, 0.55);
+    border-color: rgba(255, 255, 255, 0.1);
+    color: white;
+  }
+  .liquid-glass.dark::before {
+    background: linear-gradient(
+      105deg,
+      rgba(255, 255, 255, 0.15) 0%,
+      rgba(255, 255, 255, 0) 35%,
+      rgba(255, 255, 255, 0.05) 100%
+    );
+  }
+
+  /* ============================================================
+     战术 UI 网格背景 — 双层（细密 + 主网格）
+     ============================================================ */
+  .tactical-grid {
+    position: relative;
+  }
+  .tactical-grid::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(99, 102, 241, 0.07) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(99, 102, 241, 0.07) 1px, transparent 1px);
+    background-size: 80px 80px;
+    pointer-events: none;
+    -webkit-mask-image: radial-gradient(ellipse at center, black 0%, transparent 75%);
+            mask-image: radial-gradient(ellipse at center, black 0%, transparent 75%);
+  }
+  .tactical-grid::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(99, 102, 241, 0.12) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(99, 102, 241, 0.12) 1px, transparent 1px);
+    background-size: 320px 320px;
+    pointer-events: none;
+    -webkit-mask-image: radial-gradient(ellipse at center, black 0%, transparent 70%);
+            mask-image: radial-gradient(ellipse at center, black 0%, transparent 70%);
+  }
+  .tactical-grid > * { position: relative; z-index: 2; }
+
+  /* 角落 4 个准星装饰 */
+  .corner-crosshair {
+    position: absolute;
+    width: 60px; height: 60px;
+    pointer-events: none;
+    opacity: 0.35;
+  }
+  .corner-crosshair::before,
+  .corner-crosshair::after {
+    content: '';
+    position: absolute;
+    background: linear-gradient(90deg, #6366F1, transparent);
+  }
+  .corner-crosshair.tl { top: 100px; left: 30px; }
+  .corner-crosshair.tl::before { top: 0; left: 0; width: 30px; height: 1.5px; }
+  .corner-crosshair.tl::after  { top: 0; left: 0; width: 1.5px; height: 30px; background: linear-gradient(180deg, #6366F1, transparent); }
+  .corner-crosshair.tr { top: 100px; right: 30px; transform: scaleX(-1); }
+  .corner-crosshair.tr::before { top: 0; left: 0; width: 30px; height: 1.5px; }
+  .corner-crosshair.tr::after  { top: 0; left: 0; width: 1.5px; height: 30px; background: linear-gradient(180deg, #EC4899, transparent); }
+  .corner-crosshair.bl { bottom: 100px; left: 30px; transform: scaleY(-1); }
+  .corner-crosshair.bl::before { top: 0; left: 0; width: 30px; height: 1.5px; background: linear-gradient(90deg, #F59E0B, transparent); }
+  .corner-crosshair.bl::after  { top: 0; left: 0; width: 1.5px; height: 30px; background: linear-gradient(180deg, #F59E0B, transparent); }
+  .corner-crosshair.br { bottom: 100px; right: 30px; transform: scale(-1); }
+  .corner-crosshair.br::before { top: 0; left: 0; width: 30px; height: 1.5px; background: linear-gradient(90deg, #10B981, transparent); }
+  .corner-crosshair.br::after  { top: 0; left: 0; width: 1.5px; height: 30px; background: linear-gradient(180deg, #10B981, transparent); }
+
+  /* ============================================================
+     CS2 主题渐变（命名取自实际饰品工艺）
+     ============================================================ */
+  .cs2-doppler {
+    background: linear-gradient(135deg, #FF3CAC 0%, #784BA0 35%, #2B86C5 70%, #00C9FF 100%);
+  }
+  .cs2-tempered {
+    background: linear-gradient(135deg, #FA8BFF 0%, #2BD2FF 50%, #2BFF88 100%);
+  }
+  .cs2-ruby {
+    background: linear-gradient(135deg, #FF0844 0%, #FFB199 100%);
+  }
+  .cs2-emerald {
+    background: linear-gradient(135deg, #14B57E 0%, #0BA5C5 100%);
+  }
+  .cs2-marble {
+    background: linear-gradient(135deg, #FFE53B 0%, #FF2525 100%);
+  }
+  .cs2-violet {
+    background: linear-gradient(135deg, #4158D0 0%, #C850C0 50%, #FFCC70 100%);
+  }
+
+  /* ============================================================
+     3D 透视容器（武器 SVG / 浮动卡片用）
+     ============================================================ */
+  .perspective-3d {
+    perspective: 1200px;
+    perspective-origin: 50% 30%;
+  }
+  .float-3d {
+    transform-style: preserve-3d;
+    animation: float3D 8s ease-in-out infinite;
+  }
+  @keyframes float3D {
+    0%, 100% { transform: rotateY(-8deg) rotateX(2deg) translateZ(0); }
+    50%      { transform: rotateY(8deg)  rotateX(-2deg) translateZ(20px); }
+  }
+  .pulse-ring {
+    position: absolute;
+    border-radius: 50%;
+    border: 2px solid currentColor;
+    opacity: 0;
+    animation: pulseRing 3s cubic-bezier(0.2, 0.8, 0.4, 1) infinite;
+  }
+  @keyframes pulseRing {
+    0%   { transform: scale(0.5); opacity: 0.8; }
+    100% { transform: scale(2.4); opacity: 0; }
+  }
+
+  /* 子元素错位入场 */
+  .stagger-in > * {
+    animation: staggerFadeUp 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+  }
+  .stagger-in > *:nth-child(1) { animation-delay: 0.05s; }
+  .stagger-in > *:nth-child(2) { animation-delay: 0.15s; }
+  .stagger-in > *:nth-child(3) { animation-delay: 0.25s; }
+  .stagger-in > *:nth-child(4) { animation-delay: 0.35s; }
+  .stagger-in > *:nth-child(5) { animation-delay: 0.45s; }
+  .stagger-in > *:nth-child(6) { animation-delay: 0.55s; }
+  @keyframes staggerFadeUp {
+    from { opacity: 0; transform: translateY(24px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* 心跳波形 */
+  @keyframes heartbeatPulse {
+    0%, 100% { transform: scale(1); opacity: 0.8; }
+    50%      { transform: scale(1.04); opacity: 1; }
+  }
+  .heartbeat { animation: heartbeatPulse 2s ease-in-out infinite; }
+
+  /* SVG 描线动画 */
+  .draw-stroke {
+    stroke-dasharray: 1000;
+    stroke-dashoffset: 1000;
+    animation: drawStroke 2.5s cubic-bezier(0.5, 0, 0.5, 1) forwards;
+  }
+  @keyframes drawStroke {
+    to { stroke-dashoffset: 0; }
+  }
 </style>
 </head>
 <body>
@@ -226,6 +433,7 @@
       <button class="nav-link active" data-page="home">概览</button>
       <button class="nav-link" data-page="charts">走势图</button>
       <button class="nav-link" data-page="positions">仓位管理</button>
+      <button class="nav-link" data-page="strategy">策略管控</button>
       <button class="nav-link" data-page="ai">AI 复盘</button>
       <button class="nav-link" data-page="settings">设置</button>
     </div>
@@ -255,11 +463,68 @@
      ========================================================= -->
 <div id="page-home" class="page active">
 
-<!-- HERO -->
-<section class="relative min-h-screen flex items-center justify-center overflow-hidden pt-14">
+<!-- HERO 重构：WebGL Doppler 着色器 + 3D 武器轮廓 + 液态玻璃卡 -->
+<section class="relative min-h-screen flex items-center justify-center overflow-hidden pt-14 tactical-grid">
+  <!-- WebGL Doppler 着色器背景（全屏，0.55 透明度叠加在白色上） -->
+  <canvas id="doppler-canvas" class="absolute inset-0 w-full h-full pointer-events-none"
+          style="opacity: 0.55; mix-blend-mode: multiply;"></canvas>
+
+  <!-- 背景光晕（保留，叠加在着色器之上） -->
   <div class="glow-orb orb-1"></div>
   <div class="glow-orb orb-2"></div>
   <div class="glow-orb orb-3"></div>
+
+  <!-- 4 角准星装饰 -->
+  <div class="corner-crosshair tl"></div>
+  <div class="corner-crosshair tr"></div>
+  <div class="corner-crosshair bl"></div>
+  <div class="corner-crosshair br"></div>
+
+  <!-- 中央 3D AK-47 轮廓（明显可见） -->
+  <div class="absolute inset-0 flex items-center justify-center pointer-events-none perspective-3d" style="top: 60px;">
+    <div class="float-3d">
+      <svg width="1000" height="320" viewBox="0 0 1000 320" fill="none" xmlns="http://www.w3.org/2000/svg" style="filter: drop-shadow(0 20px 40px rgba(99,102,241,0.15));">
+        <defs>
+          <linearGradient id="akGrad" x1="0" x2="1" y1="0" y2="0">
+            <stop offset="0%"   stop-color="#6366F1"/>
+            <stop offset="50%"  stop-color="#EC4899"/>
+            <stop offset="100%" stop-color="#F59E0B"/>
+          </linearGradient>
+          <linearGradient id="akFill" x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0%"   stop-color="#6366F1" stop-opacity="0.05"/>
+            <stop offset="100%" stop-color="#EC4899" stop-opacity="0.02"/>
+          </linearGradient>
+        </defs>
+
+        <!-- AK-47 主体轮廓（带半透明填充 + 渐变描边） -->
+        <path d="M 80 175 L 160 175 L 178 158 L 215 158 L 222 145 L 295 145 L 302 132 L 360 132 L 368 118 L 425 118 L 433 105 L 460 105 L 478 88 L 510 88 L 518 105 L 695 105 L 702 118 L 752 118 L 770 138 L 802 138 L 810 125 L 858 125 L 870 138 L 912 138 L 920 152 L 962 152 L 975 168 L 1015 168 L 1028 182 L 1028 200 L 1015 215 L 695 215 L 678 232 L 640 232 L 622 248 L 580 248 L 560 265 L 522 265 L 508 252 L 495 245 L 460 245 L 452 228 L 405 228 L 398 220 L 355 220 L 348 228 L 300 228 L 282 245 L 245 245 L 225 228 L 162 228 L 145 215 L 80 215 Z"
+              fill="url(#akFill)"
+              stroke="url(#akGrad)" stroke-width="2.5" stroke-linejoin="round" opacity="0.55"/>
+
+        <!-- 弹匣 -->
+        <path d="M 432 215 L 418 268 L 442 285 L 502 285 L 522 268 L 510 215 Z"
+              fill="url(#akFill)"
+              stroke="url(#akGrad)" stroke-width="2" opacity="0.55" stroke-linejoin="round"/>
+
+        <!-- 扳机护圈 -->
+        <circle cx="385" cy="245" r="14" stroke="url(#akGrad)" stroke-width="1.5" fill="none" opacity="0.45"/>
+
+        <!-- 准星目标 -->
+        <g style="animation: heartbeatPulse 3s ease-in-out infinite;">
+          <circle cx="640" cy="95" r="4" fill="url(#akGrad)" opacity="0.8"/>
+          <circle cx="640" cy="95" r="14" stroke="url(#akGrad)" stroke-width="1.2" fill="none" opacity="0.5"/>
+          <circle cx="640" cy="95" r="26" stroke="url(#akGrad)" stroke-width="0.8" fill="none" opacity="0.3"/>
+          <line x1="640" y1="60" x2="640" y2="75" stroke="url(#akGrad)" stroke-width="1.2" opacity="0.6"/>
+          <line x1="640" y1="115" x2="640" y2="130" stroke="url(#akGrad)" stroke-width="1.2" opacity="0.6"/>
+          <line x1="605" y1="95" x2="620" y2="95" stroke="url(#akGrad)" stroke-width="1.2" opacity="0.6"/>
+          <line x1="660" y1="95" x2="675" y2="95" stroke="url(#akGrad)" stroke-width="1.2" opacity="0.6"/>
+        </g>
+
+        <!-- 弹道轨迹（淡） -->
+        <path d="M 1028 190 Q 1100 180 1180 200" stroke="url(#akGrad)" stroke-width="1" fill="none" opacity="0.3" stroke-dasharray="4 4"/>
+      </svg>
+    </div>
+  </div>
 
   <div class="relative z-10 text-center px-6 max-w-5xl">
     <div class="reveal mb-8 flex items-center justify-center gap-3">
@@ -288,19 +553,97 @@
       </button>
     </div>
 
-    <div class="reveal delay-4 mt-20 grid grid-cols-3 gap-12 max-w-3xl mx-auto">
-      <div>
-        <div class="text-4xl font-semibold tracking-tight" data-hero-stat="items">0</div>
-        <div class="text-sm text-[var(--text-secondary)] mt-1">监控品种</div>
+    <!-- 4 张液态玻璃统计卡 -->
+    <div class="reveal delay-4 mt-20 grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl mx-auto stagger-in">
+      <div class="liquid-glass rounded-3xl p-6 text-left">
+        <div class="text-xs text-[var(--text-tertiary)] uppercase tracking-wider">监控品种</div>
+        <div class="text-3xl font-semibold tracking-tight mt-2" data-hero-stat="items">0</div>
+        <div class="text-xs text-[var(--text-tertiary)] mt-1">SteamDT 实时抓取</div>
       </div>
-      <div>
-        <div class="text-4xl font-semibold tracking-tight">10<span class="text-xl text-[var(--text-tertiary)]">分钟</span></div>
-        <div class="text-sm text-[var(--text-secondary)] mt-1">扫描频率</div>
+      <div class="liquid-glass rounded-3xl p-6 text-left">
+        <div class="text-xs text-[var(--text-tertiary)] uppercase tracking-wider">扫描频率</div>
+        <div class="text-3xl font-semibold tracking-tight mt-2">10<span class="text-base text-[var(--text-tertiary)] ml-1">分钟</span></div>
+        <div class="text-xs text-[var(--text-tertiary)] mt-1">Fast / 1H Slow / 23:00 复盘</div>
       </div>
-      <div>
-        <div class="text-4xl font-semibold tracking-tight">96<span class="text-xl text-[var(--text-tertiary)]">%</span></div>
-        <div class="text-sm text-[var(--text-secondary)] mt-1">Token 节省</div>
+      <div class="liquid-glass rounded-3xl p-6 text-left">
+        <div class="text-xs text-[var(--text-tertiary)] uppercase tracking-wider">活跃策略</div>
+        <div class="text-2xl font-semibold tracking-tight mt-2 truncate" id="hero-active-strategy">—</div>
+        <div class="text-xs text-[var(--text-tertiary)] mt-1" id="hero-strategy-count">— 个策略可选</div>
       </div>
+      <div class="liquid-glass rounded-3xl p-6 text-left">
+        <div class="text-xs text-[var(--text-tertiary)] uppercase tracking-wider">总仓位预算</div>
+        <div class="text-3xl font-semibold tracking-tight mt-2" id="hero-budget">¥—</div>
+        <div class="text-xs text-[var(--text-tertiary)] mt-1" id="hero-budget-used">已用 —</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- =========================================================
+     系统脉搏 — 实时数据流可视化
+     ========================================================= -->
+<section class="relative py-24 px-6">
+  <div class="max-w-6xl mx-auto">
+    <div class="text-center mb-12">
+      <span class="pill mb-4 reveal">SYSTEM PULSE</span>
+      <h2 class="reveal delay-1 text-4xl md:text-5xl font-semibold tracking-tight mb-3">
+        永不停歇的<span class="text-gradient">数据脉搏</span>
+      </h2>
+      <p class="reveal delay-2 text-base text-[var(--text-secondary)] max-w-2xl mx-auto">
+        每 10 分钟一次扫描，每条信号都被 shadow 跟跑，每个决策都有数据支撑。
+      </p>
+    </div>
+
+    <!-- 心跳波形 -->
+    <div class="reveal delay-3 liquid-glass rounded-[28px] p-10 mb-6">
+      <div class="flex items-center justify-between mb-6 flex-wrap gap-4">
+        <div class="flex items-center gap-3">
+          <div class="relative">
+            <div class="w-3 h-3 rounded-full bg-emerald-500 heartbeat"></div>
+            <div class="pulse-ring text-emerald-500" style="width: 12px; height: 12px; left: 0; top: 0;"></div>
+          </div>
+          <div>
+            <div class="font-medium">监控引擎运行中</div>
+            <div class="text-xs text-[var(--text-tertiary)]" id="pulse-last-scan">最近扫描: —</div>
+          </div>
+        </div>
+        <div class="grid grid-cols-3 gap-6 text-right">
+          <div>
+            <div class="text-2xl font-semibold" id="pulse-shadow-count">—</div>
+            <div class="text-xs text-[var(--text-tertiary)]">Shadow 累计</div>
+          </div>
+          <div>
+            <div class="text-2xl font-semibold" id="pulse-pending-count">—</div>
+            <div class="text-xs text-[var(--text-tertiary)]">7 日内待评估</div>
+          </div>
+          <div>
+            <div class="text-2xl font-semibold" id="pulse-strategies-count">—</div>
+            <div class="text-xs text-[var(--text-tertiary)]">策略并行</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 心跳波形 SVG -->
+      <svg viewBox="0 0 800 80" preserveAspectRatio="none" class="w-full" style="height: 80px;">
+        <defs>
+          <linearGradient id="pulseGrad" x1="0" x2="1" y1="0" y2="0">
+            <stop offset="0%"  stop-color="#10B981" stop-opacity="0"/>
+            <stop offset="50%" stop-color="#10B981" stop-opacity="0.8"/>
+            <stop offset="100%" stop-color="#10B981" stop-opacity="0"/>
+          </linearGradient>
+        </defs>
+        <!-- 重复心跳波形 -->
+        <path d="M 0 40 L 100 40 L 110 25 L 120 60 L 130 10 L 140 50 L 150 40 L 250 40 L 260 25 L 270 60 L 280 10 L 290 50 L 300 40 L 400 40 L 410 25 L 420 60 L 430 10 L 440 50 L 450 40 L 550 40 L 560 25 L 570 60 L 580 10 L 590 50 L 600 40 L 700 40 L 710 25 L 720 60 L 730 10 L 740 50 L 750 40 L 800 40"
+              stroke="url(#pulseGrad)" stroke-width="2" fill="none">
+          <animate attributeName="stroke-dashoffset" from="0" to="-300" dur="3s" repeatCount="indefinite"/>
+          <animate attributeName="stroke-dasharray" from="300" to="300" dur="3s"/>
+        </path>
+      </svg>
+    </div>
+
+    <!-- 4 路并行策略小卡 -->
+    <div id="hero-strategy-grid" class="grid grid-cols-1 md:grid-cols-4 gap-4 stagger-in">
+      <!-- JS 渲染 -->
     </div>
   </div>
 </section>
@@ -540,6 +883,98 @@
 </div>
 
 <!-- =========================================================
+     PAGE: 策略管控 — Tab 选择 + 单策略详情 + 渐变动画
+     ========================================================= -->
+<style>
+  /* Tab 样式 */
+  .strategy-tab {
+    padding: 9px 22px;
+    border-radius: 9999px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    cursor: pointer;
+    background: transparent;
+    border: none;
+    transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+    white-space: nowrap;
+  }
+  .strategy-tab:hover { color: var(--text-primary); }
+  .strategy-tab.selected {
+    background: white;
+    color: var(--text-primary);
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  }
+  .strategy-tab .active-dot {
+    display: inline-block;
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: #10B981;
+    margin-left: 8px;
+    vertical-align: middle;
+    animation: dotPulse 2s ease-in-out infinite;
+  }
+  @keyframes dotPulse {
+    0%, 100% { transform: scale(1);   opacity: 1; }
+    50%      { transform: scale(1.3); opacity: 0.7; }
+  }
+
+  /* 详情面板渐变动画 */
+  .strategy-detail-panel {
+    transition: opacity 0.25s ease, transform 0.25s ease;
+  }
+  .strategy-detail-panel.fading-out {
+    opacity: 0;
+    transform: translateY(8px);
+    pointer-events: none;
+  }
+  .strategy-detail-panel.fading-in {
+    animation: stratFadeIn 0.55s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+  }
+  @keyframes stratFadeIn {
+    0%   { opacity: 0; transform: translateY(12px); }
+    100% { opacity: 1; transform: translateY(0); }
+  }
+  /* 内部子卡片错位入场 */
+  .strategy-detail-panel.fading-in > * {
+    animation: childFadeIn 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+  }
+  .strategy-detail-panel.fading-in > *:nth-child(1) { animation-delay: 0.05s; }
+  .strategy-detail-panel.fading-in > *:nth-child(2) { animation-delay: 0.12s; }
+  .strategy-detail-panel.fading-in > *:nth-child(3) { animation-delay: 0.19s; }
+  .strategy-detail-panel.fading-in > *:nth-child(4) { animation-delay: 0.26s; }
+  .strategy-detail-panel.fading-in > *:nth-child(5) { animation-delay: 0.33s; }
+  .strategy-detail-panel.fading-in > *:nth-child(6) { animation-delay: 0.40s; }
+  .strategy-detail-panel.fading-in > *:nth-child(7) { animation-delay: 0.47s; }
+  @keyframes childFadeIn {
+    0%   { opacity: 0; transform: translateY(16px); }
+    100% { opacity: 1; transform: translateY(0); }
+  }
+</style>
+
+<div id="page-strategy" class="page" style="padding-top: 100px;">
+<section class="py-12 px-6 max-w-6xl mx-auto">
+  <h2 class="text-4xl font-semibold tracking-tight mb-3">策略管控</h2>
+  <p class="text-[var(--text-secondary)] mb-8">
+    点击 Tab 切换查看不同策略的详细信息。绿点 ●&nbsp;= 当前 active 策略（实际推送用此），其他策略在 shadow 模式跟跑。
+  </p>
+
+  <!-- Tab 选择器 -->
+  <div class="mb-8 overflow-x-auto">
+    <div id="strategy-tabs" class="inline-flex p-1.5 rounded-full bg-black/[0.04] gap-1">
+      <div class="text-xs text-[var(--text-tertiary)] px-4 py-2">加载中...</div>
+    </div>
+  </div>
+
+  <!-- 详情面板（按选中策略动态渲染） -->
+  <div id="strategy-detail" class="strategy-detail-panel space-y-6">
+    <div class="text-center py-12 text-[var(--text-tertiary)]">加载中...</div>
+  </div>
+
+</section>
+</div>
+
+<!-- =========================================================
      PAGE: AI 复盘 — Shadow 收益 + AI 复盘评论 + 参数提案
      ========================================================= -->
 <div id="page-ai" class="page" style="padding-top: 100px;">
@@ -727,6 +1162,28 @@
       ⚠️ API key 会以明文存到 <code class="bg-white px-1 rounded">m4a4_buzz_kill_state.json</code>。
       该文件仅在你本地，但请不要把 state.json 上传到任何代码仓库。
     </div>
+  </div>
+
+  <!-- 策略行为开关 -->
+  <div class="mb-10 rounded-[28px] p-8 backdrop-blur-2xl"
+       style="background: rgba(255,255,255,0.65); border: 1px solid rgba(255,255,255,0.35);">
+    <h3 class="text-lg font-medium mb-4">🎚️ 策略行为开关</h3>
+    <label class="flex items-start gap-3 cursor-pointer p-3 rounded-xl hover:bg-black/[0.02] transition">
+      <input type="checkbox" id="toggle-ignore-whale" class="mt-1 cursor-pointer" onchange="saveWhaleToggle()">
+      <div class="flex-1">
+        <div class="font-medium text-sm">屏蔽庄家信号干扰</div>
+        <div class="text-xs text-[var(--text-secondary)] mt-1 leading-relaxed">
+          勾选后，系统将无视所有庄家相关规则：
+          <span class="text-[var(--text-tertiary)]">
+            BUY-WHALE 不再触发 · A1-WHALE-STOP 止损不再激活 · bias 不会升级到 positive_with_whale_buy
+          </span>
+        </div>
+        <div class="text-xs text-[var(--text-tertiary)] mt-1">
+          适合：你不相信庄家公告 / 想让系统纯按技术信号决策。
+        </div>
+      </div>
+      <span id="whale-toggle-status" class="text-xs"></span>
+    </label>
   </div>
 
   <!-- 基本面 -->
@@ -1062,6 +1519,9 @@
         updateChart(hist.history, itemsResp.items[0]);
       }
     }
+
+    // 6. 主页扩展（液晶卡 / 系统脉搏 / 策略矩阵）
+    refreshHeroExtras();
   }
 
   function renderSkinCards(items) {
@@ -1115,18 +1575,29 @@
       // 转义 HTML 特殊字符
       const safe = (s) => String(s ?? '').replace(/[<>&"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
 
+      // 图标：优先 Steam CDN 真图，否则回落到字母 Logo
+      const iconHtml = item.image_url
+        ? `<div class="w-16 h-16 rounded-2xl overflow-hidden flex items-center justify-center"
+                style="background: linear-gradient(135deg, var(--${c.grad}) 0%, transparent 80%); box-shadow: 0 8px 24px -8px rgba(99,102,241,0.4);">
+             <img src="${safe(item.image_url)}" alt="${safe(fullName)}"
+                  loading="lazy"
+                  style="width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 2px 6px rgba(0,0,0,0.15));"
+                  onerror="this.outerHTML='<span class=\\'text-white font-medium text-sm\\'>${safe(prefix)}</span>'"/>
+           </div>`
+        : `<div class="w-12 h-12 rounded-2xl flex items-center justify-center" style="background: var(--${c.grad}); box-shadow: 0 8px 24px -8px rgba(99,102,241,0.4);">
+             <span class="text-white font-medium text-sm">${safe(prefix)}</span>
+           </div>`;
+
       return `
-        <div class="glass-card reveal delay-${(i % 4) + 1} p-7" style="background: linear-gradient(180deg, rgba(255,255,255,0.7), ${c.bg});">
-          <div class="flex items-center justify-between mb-4">
-            <div class="w-12 h-12 rounded-2xl flex items-center justify-center" style="background: var(--${c.grad});">
-              <span class="text-white font-medium text-sm">${safe(prefix)}</span>
-            </div>
+        <div class="liquid-glass reveal delay-${(i % 4) + 1} rounded-[28px] p-7 transition-transform hover:-translate-y-1">
+          <div class="flex items-center justify-between mb-4 relative z-10">
+            ${iconHtml}
             ${badge}
           </div>
-          <h3 class="font-medium text-lg mb-1">${safe(fullName)}</h3>
-          <p class="text-xs text-[var(--text-tertiary)] mb-4">${safe(desc)}</p>
-          <div class="text-3xl font-semibold tracking-tight">${fmtPrice(item.price)}</div>
-          <div class="flex items-center gap-2 mt-2">
+          <h3 class="font-medium text-lg mb-1 relative z-10">${safe(fullName)}</h3>
+          <p class="text-xs text-[var(--text-tertiary)] mb-4 relative z-10">${safe(desc)}</p>
+          <div class="text-3xl font-semibold tracking-tight relative z-10">${fmtPrice(item.price)}</div>
+          <div class="flex items-center gap-2 mt-2 relative z-10">
             <span class="text-sm font-medium ${pctCls}">${pctText}</span>
             <span class="text-xs text-[var(--text-tertiary)]">今日</span>
           </div>
@@ -1148,6 +1619,99 @@
   function updateHeroStats(itemCount) {
     const el = document.querySelector('[data-hero-stat="items"]');
     if (el) el.textContent = (itemCount ?? 0).toString();
+  }
+
+  // ============================================================
+  // 主页扩展：填充 hero 液晶卡 + 系统脉搏 + 策略矩阵
+  // ============================================================
+  async function refreshHeroExtras() {
+    // 1. 策略元信息 + 当前 active
+    const strategies = await fetchAPI('/api/strategies');
+    if (strategies?.strategies) {
+      const active = strategies.strategies.find(s => s.id === strategies.active);
+      const heroActiveEl = document.getElementById('hero-active-strategy');
+      const heroCountEl  = document.getElementById('hero-strategy-count');
+      if (heroActiveEl && active) {
+        const shortName = active.name.includes('·') ? active.name.split('·').slice(1).join('·').trim() : active.name;
+        heroActiveEl.textContent = shortName;
+      }
+      if (heroCountEl) {
+        heroCountEl.textContent = `${strategies.strategies.length} 个策略并行 shadow 跟跑`;
+      }
+
+      // 渲染 4 个策略迷你卡
+      const grid = document.getElementById('hero-strategy-grid');
+      if (grid) {
+        const palette = {
+          'phase-sync-v1':     { gradClass: 'cs2-violet',   icon: '🌈' },
+          'rsi-reversion-v1':  { gradClass: 'cs2-tempered', icon: '〰️' },
+          'mean-reversion-v1': { gradClass: 'cs2-emerald',  icon: '📐' },
+          'grid-half-v1':      { gradClass: 'cs2-doppler',  icon: '⚡' },
+        };
+        grid.innerHTML = strategies.strategies.map(s => {
+          const p = palette[s.id] || { gradClass: 'cs2-marble', icon: '·' };
+          const stats = strategies.performance?.[s.id];
+          const isActive = s.id === strategies.active;
+          const shortName = s.name.includes('·') ? s.name.split('·').slice(1).join('·').trim() : s.name;
+          return `
+            <div class="liquid-glass rounded-3xl p-5 cursor-pointer transition-transform hover:-translate-y-1"
+                 onclick="switchPage('strategy')">
+              <div class="flex items-center justify-between mb-3">
+                <div class="w-10 h-10 rounded-xl flex items-center justify-center text-lg ${p.gradClass}">
+                  <span style="filter: drop-shadow(0 1px 2px rgba(0,0,0,0.2));">${p.icon}</span>
+                </div>
+                ${isActive ? '<span class="pill green" style="font-size:10px;">active</span>' : ''}
+              </div>
+              <div class="font-semibold text-base mb-1">${shortName}</div>
+              <div class="text-xs text-[var(--text-tertiary)] truncate mb-3">${s.tagline || ''}</div>
+              ${stats ? `
+                <div class="flex items-baseline gap-2">
+                  <span class="text-xl font-semibold ${stats.win_rate >= 0.5 ? 'text-emerald-600' : 'text-rose-600'}">${(stats.win_rate*100).toFixed(0)}%</span>
+                  <span class="text-xs text-[var(--text-tertiary)]">胜率 · ${stats.count} 笔</span>
+                </div>
+              ` : `
+                <div class="text-xs text-[var(--text-tertiary)]">📊 数据积累中</div>
+              `}
+            </div>
+          `;
+        }).join('');
+      }
+
+      // 设置脉搏区策略数
+      const ps = document.getElementById('pulse-strategies-count');
+      if (ps) ps.textContent = strategies.strategies.length;
+    }
+
+    // 2. 总预算 + 心跳信息
+    const [budget, freshness, shadowStats] = await Promise.all([
+      fetchAPI('/api/global/budget'),
+      fetchAPI('/api/health/freshness'),
+      fetchAPI('/api/shadow/stats'),
+    ]);
+
+    if (budget) {
+      const el = document.getElementById('hero-budget');
+      if (el) el.textContent = budget.planned_total_cny > 0 ? `¥${(budget.planned_total_cny/1000).toFixed(1)}k` : '未设';
+    }
+
+    // 3. 系统脉搏区
+    if (freshness) {
+      const lastEl = document.getElementById('pulse-last-scan');
+      if (lastEl) {
+        const min = freshness.age_minutes;
+        if (min == null) lastEl.textContent = '最近扫描: —';
+        else if (min < 60) lastEl.textContent = `最近扫描: ${min.toFixed(1)} 分钟前`;
+        else lastEl.textContent = `最近扫描: ${(min/60).toFixed(1)} 小时前`;
+      }
+    }
+
+    if (shadowStats) {
+      const totalShadows = Object.values(shadowStats.stats || {}).reduce((s, v) => s + (v.count || 0), 0);
+      const sc = document.getElementById('pulse-shadow-count');
+      const pc = document.getElementById('pulse-pending-count');
+      if (sc) sc.textContent = totalShadows;
+      if (pc) pc.textContent = shadowStats.pending || 0;
+    }
   }
 
   function updateMarketDisplay(market) {
@@ -1212,8 +1776,521 @@
 
     if (target === 'charts')    loadChartsPage();
     if (target === 'positions') loadPositionsPage();
+    if (target === 'strategy')  loadStrategyPage();
     if (target === 'ai')        loadAIPage();
     if (target === 'settings')  loadSettingsPage();
+  }
+
+  // ============================================================
+  // 策略管控页：Tab 切换 + 单策略详情 + 渐变动画
+  // ============================================================
+  let _selectedStrategyId = null;
+  let _strategiesCache    = null;
+
+  async function loadStrategyPage() {
+    const resp = await fetchAPI('/api/strategies');
+    if (!resp || !resp.strategies?.length) {
+      document.getElementById('strategy-detail').innerHTML =
+        '<div class="text-rose-600 text-center py-8">无法加载策略列表</div>';
+      return;
+    }
+    _strategiesCache = resp;
+    if (!_selectedStrategyId) _selectedStrategyId = resp.active;
+    renderStrategyTabs();
+    await renderStrategyDetail(_selectedStrategyId, /* skipAnimate */ true);
+  }
+
+  function renderStrategyTabs() {
+    if (!_strategiesCache) return;
+    const tabs = document.getElementById('strategy-tabs');
+    if (!tabs) return;
+    const activeId = _strategiesCache.active;
+    tabs.innerHTML = _strategiesCache.strategies.map(s => {
+      const isSelected = s.id === _selectedStrategyId;
+      const isActive   = s.id === activeId;
+      // 取 "·" 后面的简短名作为 tab 文本
+      const shortName  = s.name.includes('·') ? s.name.split('·').slice(1).join('·').trim() : s.name;
+      return `
+        <button class="strategy-tab ${isSelected ? 'selected' : ''}" onclick="selectStrategy('${s.id}')">
+          ${shortName}
+          ${isActive ? '<span class="active-dot" title="当前推送策略"></span>' : ''}
+        </button>
+      `;
+    }).join('');
+  }
+
+  async function selectStrategy(strategyId) {
+    if (_selectedStrategyId === strategyId) return;
+    _selectedStrategyId = strategyId;
+    renderStrategyTabs();
+    await renderStrategyDetail(strategyId, /* skipAnimate */ false);
+  }
+
+  async function renderStrategyDetail(strategyId, skipAnimate) {
+    const panel = document.getElementById('strategy-detail');
+    if (!panel || !_strategiesCache) return;
+    const s = _strategiesCache.strategies.find(x => x.id === strategyId);
+    if (!s) return;
+    const stats = _strategiesCache.performance?.[strategyId];
+    const isActive = s.id === _strategiesCache.active;
+
+    // 动画：先淡出 → 改内容 → 淡入
+    if (!skipAnimate) {
+      panel.classList.remove('fading-in');
+      panel.classList.add('fading-out');
+      await new Promise(r => setTimeout(r, 250));
+    }
+
+    // === 头部：名字 + tagline + 操作按钮 ===
+    const headerHtml = `
+      <div class="rounded-[28px] p-8 backdrop-blur-2xl"
+           style="background: linear-gradient(135deg, rgba(99,102,241,0.08), rgba(236,72,153,0.04)); border: 1px solid rgba(99,102,241,0.18);">
+        <div class="flex items-start justify-between gap-4 flex-wrap">
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-3 mb-2 flex-wrap">
+              <h3 class="text-2xl font-semibold tracking-tight text-gradient">${s.name}</h3>
+              ${isActive ? '<span class="pill green" style="font-size:11px;">✓ 当前启用</span>' : ''}
+              <span class="pill ${s.status === 'stable' ? 'green' : 'amber'}" style="font-size:11px;">${s.status || '—'}</span>
+              <span class="pill" style="font-size:11px;">v${s.version || '—'}</span>
+            </div>
+            <div class="text-sm text-[var(--text-secondary)]">${s.tagline || ''}</div>
+          </div>
+          <div>
+            ${isActive
+              ? '<button disabled class="px-5 py-2.5 rounded-full bg-emerald-100 text-emerald-700 text-sm font-medium cursor-default">已是当前策略</button>'
+              : `<button onclick="setActiveStrategy('${s.id}')" class="px-5 py-2.5 rounded-full bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 transition">切换为当前策略</button>`}
+          </div>
+        </div>
+        <p class="text-sm leading-relaxed text-[var(--text-secondary)] mt-4">${s.description || ''}</p>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4 text-xs">
+          <div class="p-3 rounded-xl bg-emerald-50/60">
+            <span class="text-emerald-700 font-medium">✓ 适用场景</span><br/>
+            <span class="text-[var(--text-secondary)]">${s.best_for || '—'}</span>
+          </div>
+          <div class="p-3 rounded-xl bg-amber-50/60">
+            <span class="text-amber-700 font-medium">⚠ 弱势场景</span><br/>
+            <span class="text-[var(--text-secondary)]">${s.weak_for || '—'}</span>
+          </div>
+        </div>
+      </div>
+    `;
+
+    // === Shadow 表现 ===
+    const perfHtml = stats ? `
+      <div class="rounded-[28px] p-8 backdrop-blur-2xl"
+           style="background: rgba(255,255,255,0.65); border: 1px solid rgba(255,255,255,0.35);">
+        <h4 class="text-lg font-medium mb-4">📊 Shadow 表现（已评估的真实数据）</h4>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div><div class="text-xs text-[var(--text-tertiary)]">已评估</div>
+               <div class="text-2xl font-semibold mt-1">${stats.count}</div>
+               <div class="text-xs text-[var(--text-tertiary)]">笔</div></div>
+          <div><div class="text-xs text-[var(--text-tertiary)]">胜率</div>
+               <div class="text-2xl font-semibold mt-1 ${stats.win_rate >= 0.5 ? 'text-emerald-600' : 'text-rose-600'}">${(stats.win_rate*100).toFixed(0)}%</div></div>
+          <div><div class="text-xs text-[var(--text-tertiary)]">平均收益</div>
+               <div class="text-2xl font-semibold mt-1 ${stats.avg_return >= 0 ? 'text-emerald-600' : 'text-rose-600'}">${(stats.avg_return*100).toFixed(2)}%</div></div>
+          <div><div class="text-xs text-[var(--text-tertiary)]">最大单笔</div>
+               <div class="text-2xl font-semibold mt-1 text-emerald-600">${(stats.max_return*100).toFixed(1)}%</div></div>
+        </div>
+      </div>
+    ` : `
+      <div class="rounded-[28px] p-8 backdrop-blur-2xl"
+           style="background: rgba(255,255,255,0.65); border: 1px solid rgba(255,255,255,0.35);">
+        <h4 class="text-lg font-medium mb-2">📊 Shadow 表现</h4>
+        <div class="text-sm text-[var(--text-tertiary)]">
+          尚无已评估的 shadow 数据。每条 BUY 信号触发后会记一笔，7 天后自动评估收益。
+        </div>
+      </div>
+    `;
+
+    // === 信号体系 ===
+    const signalsHtml = (s.signals || []).length ? `
+      <div class="rounded-[28px] p-8 backdrop-blur-2xl"
+           style="background: rgba(255,255,255,0.65); border: 1px solid rgba(255,255,255,0.35);">
+        <h4 class="text-lg font-medium mb-3">🎯 信号类型</h4>
+        <div class="flex flex-wrap gap-2">
+          ${s.signals.map(sig => `<code class="px-3 py-1.5 rounded-lg bg-indigo-50 text-indigo-700 text-sm font-mono">${sig}</code>`).join('')}
+        </div>
+      </div>
+    ` : '';
+
+    // === 策略特定的扩展内容 ===
+    let specificHtml = '';
+    if (s.id === 'phase-sync-v1') {
+      specificHtml = renderPhaseSyncDetails();
+    } else if (s.id === 'rsi-reversion-v1') {
+      specificHtml = renderRsiDetails();
+    } else if (s.id === 'mean-reversion-v1') {
+      specificHtml = renderMrDetails();
+    } else if (s.id === 'grid-half-v1') {
+      specificHtml = renderGridDetails();
+    }
+
+    panel.innerHTML = headerHtml + perfHtml + signalsHtml + specificHtml;
+
+    // 触发淡入动画
+    panel.classList.remove('fading-out');
+    if (!skipAnimate) {
+      // force reflow，确保 animation 重启
+      void panel.offsetWidth;
+      panel.classList.add('fading-in');
+      setTimeout(() => panel.classList.remove('fading-in'), 800);
+    }
+
+    // 网格策略：渲染按品种启用列表
+    if (s.id === 'grid-half-v1') {
+      await renderGridPanel();
+    }
+  }
+
+  // ---- 各策略的特定内容 ----
+
+  function renderPhaseSyncDetails() {
+    return `
+      <div class="rounded-[28px] p-8 backdrop-blur-2xl"
+           style="background: rgba(255,255,255,0.65); border: 1px solid rgba(255,255,255,0.35);">
+        <h4 class="text-lg font-medium mb-4">🔄 决策数据流（7 层）</h4>
+        <pre class="text-xs leading-relaxed font-mono p-4 rounded-xl bg-black/[0.03] overflow-x-auto">每 10 分钟扫描:
+
+  Layer 1  抓数据      → history.append({price, volume, market_index, ...})
+  Layer 2  算指标      → MA, momentum, volume_quality, volatility
+  Layer 3  识别阶段    → ACCUMULATION / SHAKEOUT / MARKUP / ...
+  Layer 4  评估 BUY    → 5 种信号按优先级竞争
+  Layer 5  bias 调节   → emergency 屏蔽 / 改 priority + 缩放止损止盈
+  Layer 6  去重        → 4 小时窗口内同信号不重推
+  Layer 7  仓位上限    → 满仓 / 超预算 → 阻断
+
+  → 推送 PushPlus + 写 signals_log + shadow.record (7 日跟踪)</pre>
+      </div>
+
+      <div class="rounded-[28px] p-8 backdrop-blur-2xl"
+           style="background: rgba(255,255,255,0.65); border: 1px solid rgba(255,255,255,0.35);">
+        <h4 class="text-lg font-medium mb-4">📈 BUY 信号详情</h4>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="text-xs text-[var(--text-tertiary)] uppercase">
+              <tr class="border-b border-black/5">
+                <th class="text-left py-2 pr-4">信号</th>
+                <th class="text-center py-2 px-2">优先级</th>
+                <th class="text-left py-2 pl-2">触发条件</th>
+              </tr>
+            </thead>
+            <tbody class="text-[13px]">
+              <tr class="border-b border-black/5"><td class="py-2 pr-4 font-medium">BUY-WASHOUT</td><td class="text-center font-mono">10</td><td class="pl-2 text-[var(--text-secondary)]">stage = SHAKEOUT（庄家洗盘急跌但未破前低）</td></tr>
+              <tr class="border-b border-black/5"><td class="py-2 pr-4 font-medium">BUY-WHALE</td><td class="text-center font-mono">9</td><td class="pl-2 text-[var(--text-secondary)]">价格距庄家承诺底 ≤ 2% + 庄家信号未过期</td></tr>
+              <tr class="border-b border-black/5"><td class="py-2 pr-4 font-medium">BUY-LAUNCH</td><td class="text-center font-mono">8</td><td class="pl-2 text-[var(--text-secondary)]">stage = MARKUP + 突破 R1 × 1.015 + 大盘配合 + 量价共振</td></tr>
+              <tr class="border-b border-black/5"><td class="py-2 pr-4 font-medium">BUY-PULLBACK</td><td class="text-center font-mono">7</td><td class="pl-2 text-[var(--text-secondary)]">24h 内 BUY-LAUNCH 后回踩 ±3% + 反弹拐头 + 动能恢复</td></tr>
+              <tr><td class="py-2 pr-4 font-medium">BUY-ACCUMULATE</td><td class="text-center font-mono">5</td><td class="pl-2 text-[var(--text-secondary)]">stage = ACCUMULATION + 当前仓位 < 30%（试探仓）</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="rounded-[28px] p-8 backdrop-blur-2xl"
+           style="background: rgba(255,255,255,0.65); border: 1px solid rgba(255,255,255,0.35);">
+        <h4 class="text-lg font-medium mb-4">🎭 6 阶段庄家识别</h4>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+          <div class="p-3 rounded-xl bg-emerald-50/40"><strong class="text-emerald-700">① ACCUMULATION 吸筹</strong><br/><span class="text-xs text-[var(--text-secondary)]">价格 &lt; 周线 5%+ + 量能持续低迷</span></div>
+          <div class="p-3 rounded-xl bg-emerald-50/40"><strong class="text-emerald-700">② SHAKEOUT 洗盘</strong><br/><span class="text-xs text-[var(--text-secondary)]">1H 急跌 -5% 但未破前低（庄家洗散户）</span></div>
+          <div class="p-3 rounded-xl bg-amber-50/40"><strong class="text-amber-700">③ COILING 蓄力</strong><br/><span class="text-xs text-[var(--text-secondary)]">波动压缩 + 价格围绕 ma_week ±3%</span></div>
+          <div class="p-3 rounded-xl bg-indigo-50/40"><strong class="text-indigo-700">④ MARKUP 拉升</strong><br/><span class="text-xs text-[var(--text-secondary)]">突破 24h 高 0.5%+ + 量价共振</span></div>
+          <div class="p-3 rounded-xl bg-rose-50/40"><strong class="text-rose-700">⑤ DISTRIBUTION 派发</strong><br/><span class="text-xs text-[var(--text-secondary)]">价格 &gt; 月线 5% + 多次假突破</span></div>
+          <div class="p-3 rounded-xl bg-rose-50/40"><strong class="text-rose-700">⑥ MARKDOWN 杀跌</strong><br/><span class="text-xs text-[var(--text-secondary)]">价格 &lt; 周 &lt; 月线 + 24h 跌 -3%+</span></div>
+        </div>
+      </div>
+
+      <div class="rounded-[28px] p-8 backdrop-blur-2xl"
+           style="background: rgba(255,255,255,0.65); border: 1px solid rgba(255,255,255,0.35);">
+        <h4 class="text-lg font-medium mb-3">🎚️ Bias 调节器（A + B 增强）</h4>
+        <p class="text-sm text-[var(--text-secondary)] mb-3">LLM 看新闻判定 bias → 实时影响 BUY 优先级 + 止损止盈阈值。</p>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="text-xs text-[var(--text-tertiary)] uppercase">
+              <tr class="border-b border-black/5">
+                <th class="text-left py-2 pr-4">Bias</th>
+                <th class="text-center py-2 px-2">BUY 优先级</th>
+                <th class="text-center py-2 px-2">止损乘数</th>
+                <th class="text-center py-2 px-2">止盈乘数</th>
+                <th class="text-left py-2 pl-2">效果</th>
+              </tr>
+            </thead>
+            <tbody class="text-[13px] font-mono">
+              <tr class="border-b border-black/5"><td class="py-2 pr-4">positive_with_whale_buy</td><td class="text-center text-emerald-600">+1</td><td class="text-center">×1.10</td><td class="text-center text-emerald-600">×1.30</td><td class="pl-2 text-xs">让利润奔跑</td></tr>
+              <tr class="border-b border-black/5"><td class="py-2 pr-4">positive</td><td class="text-center text-emerald-600">+1</td><td class="text-center">×1.00</td><td class="text-center text-emerald-600">×1.10</td><td class="pl-2 text-xs">略偏多</td></tr>
+              <tr class="border-b border-black/5"><td class="py-2 pr-4">neutral</td><td class="text-center">0</td><td class="text-center">×1.00</td><td class="text-center">×1.00</td><td class="pl-2 text-xs">默认</td></tr>
+              <tr class="border-b border-black/5"><td class="py-2 pr-4">negative</td><td class="text-center text-rose-600">-1</td><td class="text-center text-rose-600">×0.70</td><td class="text-center text-rose-600">×0.80</td><td class="pl-2 text-xs">收紧防守</td></tr>
+              <tr><td class="py-2 pr-4">emergency</td><td class="text-center text-rose-600 font-bold">屏蔽</td><td class="text-center text-rose-600">×0.50</td><td class="text-center text-rose-600">×0.60</td><td class="pl-2 text-xs">紧急清仓</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+  }
+
+  function renderRsiDetails() {
+    return `
+      <div class="rounded-[28px] p-8 backdrop-blur-2xl"
+           style="background: rgba(255,255,255,0.65); border: 1px solid rgba(255,255,255,0.35);">
+        <h4 class="text-lg font-medium mb-4">📊 RSI 公式</h4>
+        <pre class="text-xs leading-relaxed font-mono p-4 rounded-xl bg-black/[0.03] overflow-x-auto">RSI = 100 − 100 / (1 + RS)
+RS  = 平均涨幅(N 天) / 平均跌幅(N 天)
+
+RSI &lt; 30  → 超卖（动能耗尽）→ 触发 BUY
+RSI &gt; 70  → 超买（动能枯竭）→ 通常出场
+我们用 N=14（业界标准），日线降采样后计算</pre>
+      </div>
+
+      <div class="rounded-[28px] p-8 backdrop-blur-2xl"
+           style="background: rgba(255,255,255,0.65); border: 1px solid rgba(255,255,255,0.35);">
+        <h4 class="text-lg font-medium mb-4">🚦 6 道闸门（任一不过 → 不触发）</h4>
+        <ol class="text-sm space-y-2 list-decimal pl-5">
+          <li>不在满仓（total_qty_pct &lt; 1.0）</li>
+          <li>不在禁止阶段（MARKUP / DISTRIBUTION / MARKDOWN）</li>
+          <li>历史足够（≥ 30 天数据）</li>
+          <li>庄家不活跃（无活跃庄家信号）</li>
+          <li><strong>RSI(14) &lt; 30</strong>（核心触发）</li>
+          <li>距月线均价 ≥ 3%（覆盖 1% 卖出手续费 + 留 2% 利润）</li>
+        </ol>
+      </div>
+
+      <div class="rounded-[28px] p-8 backdrop-blur-2xl"
+           style="background: rgba(255,255,255,0.65); border: 1px solid rgba(255,255,255,0.35);">
+        <h4 class="text-lg font-medium mb-4">⚙️ 关键参数</h4>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm font-mono">
+          <div class="p-2 rounded bg-black/[0.03]"><span class="text-[var(--text-tertiary)]">rsi_period:</span> 14</div>
+          <div class="p-2 rounded bg-black/[0.03]"><span class="text-[var(--text-tertiary)]">rsi_oversold:</span> 30</div>
+          <div class="p-2 rounded bg-black/[0.03]"><span class="text-[var(--text-tertiary)]">min_history_days:</span> 30</div>
+          <div class="p-2 rounded bg-black/[0.03]"><span class="text-[var(--text-tertiary)]">min_distance_to_mean:</span> 0.03 (3%)</div>
+        </div>
+      </div>
+    `;
+  }
+
+  function renderMrDetails() {
+    return `
+      <div class="rounded-[28px] p-8 backdrop-blur-2xl"
+           style="background: rgba(255,255,255,0.65); border: 1px solid rgba(255,255,255,0.35);">
+        <h4 class="text-lg font-medium mb-4">📊 z-score 公式</h4>
+        <pre class="text-xs leading-relaxed font-mono p-4 rounded-xl bg-black/[0.03] overflow-x-auto">z = (P − μ) / σ
+
+  μ = 20 日均价
+  σ = 20 日标准差
+  P = 当前价
+
+z = -2  →  当前价比 20 日均价低 2 个标准差
+            （统计上罕见，约 5% 概率事件）
+z &lt; -2  →  触发 MR-OVERSOLD</pre>
+      </div>
+
+      <div class="rounded-[28px] p-8 backdrop-blur-2xl"
+           style="background: rgba(255,255,255,0.65); border: 1px solid rgba(255,255,255,0.35);">
+        <h4 class="text-lg font-medium mb-4">🚦 6 道闸门</h4>
+        <ol class="text-sm space-y-2 list-decimal pl-5">
+          <li>不在满仓</li>
+          <li>不在禁止阶段（MARKUP / DISTRIBUTION / MARKDOWN）</li>
+          <li>历史足够（≥ 40 天，因为 σ 计算需更多样本）</li>
+          <li>庄家不活跃</li>
+          <li><strong>z-score ≤ -2.0</strong>（核心触发）</li>
+          <li>距均线绝对距离 ≥ 5%（避免低波动品种触发过敏）</li>
+        </ol>
+      </div>
+
+      <div class="rounded-[28px] p-8 backdrop-blur-2xl"
+           style="background: rgba(255,255,255,0.65); border: 1px solid rgba(255,255,255,0.35);">
+        <h4 class="text-lg font-medium mb-4">⚙️ 关键参数</h4>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm font-mono">
+          <div class="p-2 rounded bg-black/[0.03]"><span class="text-[var(--text-tertiary)]">lookback_days:</span> 20</div>
+          <div class="p-2 rounded bg-black/[0.03]"><span class="text-[var(--text-tertiary)]">z_score_threshold:</span> -2.0</div>
+          <div class="p-2 rounded bg-black/[0.03]"><span class="text-[var(--text-tertiary)]">min_history_days:</span> 40</div>
+          <div class="p-2 rounded bg-black/[0.03]"><span class="text-[var(--text-tertiary)]">min_distance_to_mean:</span> 0.05 (5%)</div>
+        </div>
+      </div>
+
+      <div class="rounded-[28px] p-8 backdrop-blur-2xl"
+           style="background: rgba(99,102,241,0.04); border: 1px solid rgba(99,102,241,0.18);">
+        <h4 class="text-lg font-medium mb-3">💡 与 RSI 战法的差异</h4>
+        <ul class="text-sm space-y-2 list-disc pl-5 text-[var(--text-secondary)]">
+          <li><strong>RSI</strong> 看动能（涨跌幅平滑）→ 反应慢半拍但更稳</li>
+          <li><strong>z-score</strong> 看价格分布 → 反应快但对低波动品种不灵</li>
+          <li>缓慢阴跌：z-score 优（等到统计极端才入，避免接刀）</li>
+          <li>剧烈暴跌：z-score 优（RSI 平滑滞后）</li>
+          <li>温和震荡：两者基本相当</li>
+        </ul>
+      </div>
+    `;
+  }
+
+  function renderGridDetails() {
+    return `
+      <div class="rounded-[28px] p-8 backdrop-blur-2xl"
+           style="background: rgba(255,255,255,0.65); border: 1px solid rgba(255,255,255,0.35);">
+        <h4 class="text-lg font-medium mb-4">📐 网格机制</h4>
+        <pre class="text-xs leading-relaxed font-mono p-4 rounded-xl bg-black/[0.03] overflow-x-auto">中心 = MA30（自动锚定，漂移 ≥10% 滑动更新）
+
+   +3 档 (+15%)  ← 卖出区
+   +2 档 (+10%)
+   +1 档 (+ 5%)
+[ 中心 C ]
+   -1 档 (- 5%)  ← 买入区
+   -2 档 (-10%)
+   -3 档 (-15%)
+
+操作：
+  价格触 -N 档 + 该档无货 → 买 1 把
+  价格回到买入价 +5% + T+7 已解锁 → 卖
+
+资金分配：
+  半仓 (50%) 平均分到 3 个买入档（每档 ~16%）
+  另一半留作应急储备（z &lt; -2.5σ 时一次性加仓）
+
+突破退出：
+  价格距中心 &gt; ±20% → 自动退出，需手动重启</pre>
+      </div>
+
+      <div class="rounded-[28px] p-8 backdrop-blur-2xl"
+           style="background: rgba(255,255,255,0.65); border: 1px solid rgba(255,255,255,0.35);">
+        <h4 class="text-lg font-medium mb-4">⚙️ 关键参数</h4>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm font-mono">
+          <div class="p-2 rounded bg-black/[0.03]"><span class="text-[var(--text-tertiary)]">grid_step_pct:</span> 0.05 (5%)</div>
+          <div class="p-2 rounded bg-black/[0.03]"><span class="text-[var(--text-tertiary)]">grid_levels:</span> 3 上下各</div>
+          <div class="p-2 rounded bg-black/[0.03]"><span class="text-[var(--text-tertiary)]">max_pos_per_level:</span> 0.10</div>
+          <div class="p-2 rounded bg-black/[0.03]"><span class="text-[var(--text-tertiary)]">breakout_exit_pct:</span> 0.20 (±20%)</div>
+          <div class="p-2 rounded bg-black/[0.03]"><span class="text-[var(--text-tertiary)]">emergency_zscore:</span> -2.5</div>
+          <div class="p-2 rounded bg-black/[0.03]"><span class="text-[var(--text-tertiary)]">tplus7_days:</span> 7</div>
+        </div>
+      </div>
+
+      <!-- 网格策略：按品种启用面板 -->
+      <div id="grid-panel" class="rounded-[28px] p-8 backdrop-blur-2xl"
+           style="background: rgba(255,255,255,0.65); border: 1px solid rgba(255,255,255,0.35);">
+        <div class="flex items-center justify-between mb-4">
+          <h4 class="text-lg font-medium">🎯 按品种启用</h4>
+          <span class="text-xs text-[var(--text-tertiary)]">启用后 shadow 跟跑；切为 active 则真实推送</span>
+        </div>
+        <p class="text-xs text-[var(--text-secondary)] mb-4">
+          网格策略需要逐个品种启用。启用时自动用当前 30 日均价作为网格中心。突破 ±20% 自动退出，需手动重启。
+        </p>
+        <div id="grid-items-list" class="space-y-3">加载中...</div>
+      </div>
+    `;
+  }
+
+  async function setActiveStrategy(strategyId) {
+    if (!confirm(`确认切换为「${strategyId}」？\n\n切换后真实推送会用这个策略，原策略仍会跟跑 shadow 用于对比。`)) return;
+    const res = await apiSend('/api/strategies/active', 'POST', { strategy_id: strategyId }, 5000);
+    if (res.ok) {
+      showToast('✓ 已切换 active 策略');
+      // 不动 _selectedStrategyId，重新拉数据并刷新
+      const fresh = await fetchAPI('/api/strategies');
+      _strategiesCache = fresh;
+      renderStrategyTabs();
+      await renderStrategyDetail(_selectedStrategyId, /* skipAnimate */ true);
+    } else {
+      showToast('切换失败：' + res.error, 'error');
+    }
+  }
+
+  async function renderGridPanel() {
+    const itemsResp = await fetchAPI('/api/items');
+    const list = document.getElementById('grid-items-list');
+    if (!list) return;
+    if (!itemsResp || !itemsResp.items?.length) {
+      list.innerHTML = '<div class="text-sm text-[var(--text-tertiary)]">尚无监控品种</div>';
+      return;
+    }
+
+    // 并发拉每个品种的 grid_state
+    const states = await Promise.all(
+      itemsResp.items.map(it => fetchAPI(`/api/grid/${encodeURIComponent(it.id)}`))
+    );
+
+    list.innerHTML = itemsResp.items.map((it, i) => {
+      const gs = states[i]?.grid_state || null;
+      const enabled = gs && gs.active;
+      const exited  = gs && gs.exited;
+
+      let statusBadge;
+      if (!gs) statusBadge = '<span class="pill" style="font-size:11px;">未启用</span>';
+      else if (exited) statusBadge = '<span class="pill amber" style="font-size:11px;">已退出（突破）</span>';
+      else if (enabled) statusBadge = '<span class="pill green" style="font-size:11px;">启用中</span>';
+      else statusBadge = '<span class="pill" style="font-size:11px;">已停用</span>';
+
+      // 持仓档可视化
+      let levelsHtml = '';
+      if (gs && gs.positions?.length) {
+        levelsHtml = `
+          <div class="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+            ${gs.positions.map(pos => {
+              const target = gs.center_price * (1 + pos.level * gs.step_pct);
+              const held = pos.qty_pieces > 0;
+              const unlocked = pos.unlock_time && new Date(pos.unlock_time) <= new Date();
+              const cellBg = held
+                ? (unlocked ? 'bg-emerald-50 border-emerald-200' : 'bg-amber-50 border-amber-200')
+                : 'bg-black/[0.02] border-black/5';
+              return `
+                <div class="p-2 rounded-lg border ${cellBg}">
+                  <div class="font-medium">L${pos.level}</div>
+                  <div class="text-[var(--text-tertiary)]">目标 ¥${target.toFixed(0)}</div>
+                  ${held
+                    ? `<div class="mt-1">
+                         <div>持仓 ${pos.qty_pieces} 把 @${fmtPrice(pos.entry_price)}</div>
+                         <div class="${unlocked ? 'text-emerald-700' : 'text-amber-700'}">
+                           ${unlocked ? '✓ 已解锁' : '⏳ T+7 锁定中'}
+                         </div>
+                       </div>`
+                    : '<div class="text-[var(--text-tertiary)]">未持仓</div>'}
+                </div>
+              `;
+            }).join('')}
+          </div>
+        `;
+      }
+
+      const centerLine = gs && gs.center_price
+        ? `中心 ¥${gs.center_price.toFixed(0)} · 档距 ${(gs.step_pct*100).toFixed(0)}% · ${gs.levels} 档/边 · 应急储备 ${gs.reserve_used ? '已动用' : '未动用'}`
+        : '';
+
+      return `
+        <div class="p-4 rounded-2xl border border-black/5 bg-white/60">
+          <div class="flex items-center justify-between flex-wrap gap-2">
+            <div>
+              <span class="font-medium">${it.short_name || it.name}</span>
+              ${statusBadge}
+            </div>
+            <div class="flex items-center gap-2">
+              ${enabled
+                ? `<button onclick="toggleGrid('${it.id}', false)" class="text-xs px-3 py-1.5 rounded-lg bg-rose-50 text-rose-700 hover:bg-rose-100 transition">关闭网格</button>`
+                : `<button onclick="toggleGrid('${it.id}', true)" class="text-xs px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition">启用网格</button>`}
+              ${exited
+                ? `<button onclick="restartGrid('${it.id}')" class="text-xs px-3 py-1.5 rounded-lg bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition">重启</button>`
+                : ''}
+            </div>
+          </div>
+          ${centerLine ? `<div class="text-xs text-[var(--text-tertiary)] mt-1">${centerLine}</div>` : ''}
+          ${levelsHtml}
+        </div>
+      `;
+    }).join('');
+  }
+
+  async function toggleGrid(itemId, active) {
+    const res = await apiSend('/api/grid/toggle', 'POST', { item_id: itemId, active }, 8000);
+    if (res.ok) {
+      showToast(active ? '✓ 网格已启用' : '✓ 网格已关闭');
+      renderGridPanel();
+    } else {
+      showToast('失败：' + res.error, 'error');
+    }
+  }
+
+  async function restartGrid(itemId) {
+    if (!confirm('重启网格会重新锚定中心价（用当前 ma_30）。原有持仓档信息会被清除。继续？')) return;
+    const res = await apiSend(`/api/grid/${encodeURIComponent(itemId)}/restart`, 'POST', null, 8000);
+    if (res.ok) {
+      showToast('✓ 网格已重启');
+      renderGridPanel();
+    } else {
+      showToast('失败：' + res.error, 'error');
+    }
   }
   document.querySelectorAll('[data-page]').forEach(el => {
     el.addEventListener('click', () => switchPage(el.dataset.page));
@@ -1854,18 +2931,28 @@
     `).join('') : '<div class="text-sm text-[var(--text-tertiary)]">暂无 token</div>';
 
     const items = state.items || [];
-    document.getElementById('settings-items-list').innerHTML = items.map(it => `
+    document.getElementById('settings-items-list').innerHTML = items.map(it => {
+      const safeName = (it.short_name || it.name).replace(/'/g, "\\'");
+      const hasImg = !!it.image_url;
+      return `
       <div class="flex items-center justify-between p-3 rounded-xl bg-black/[0.03]">
-        <div class="flex-1 min-w-0">
-          <div class="font-medium">${it.short_name || it.name}</div>
-          <div class="text-xs text-[var(--text-tertiary)] truncate">${it.id}  ·  ${it.history?.length || 0} 条历史</div>
+        <div class="flex items-center gap-3 flex-1 min-w-0">
+          ${hasImg
+            ? `<img src="${it.image_url}" alt="" class="w-10 h-10 rounded-lg object-contain bg-white/60 flex-shrink-0" loading="lazy"/>`
+            : '<div class="w-10 h-10 rounded-lg bg-black/[0.06] flex items-center justify-center text-xs text-[var(--text-tertiary)] flex-shrink-0">无图</div>'}
+          <div class="min-w-0 flex-1">
+            <div class="font-medium">${it.short_name || it.name}</div>
+            <div class="text-xs text-[var(--text-tertiary)] truncate">${it.id}  ·  ${it.history?.length || 0} 条历史</div>
+          </div>
         </div>
         <div class="flex items-center gap-2 ml-3">
           <a href="${it.url}" target="_blank" class="text-xs text-indigo-600 hover:underline">SteamDT ↗</a>
-          <button onclick="deleteItem('${it.id}', '${(it.short_name || it.name).replace(/'/g, "\\'")}')" class="text-xs text-rose-600 hover:bg-rose-50 px-2 py-1 rounded transition">删除</button>
+          <button onclick="setItemImage('${it.id}', '${safeName}')" class="text-xs text-indigo-600 hover:bg-indigo-50 px-2 py-1 rounded transition">${hasImg ? '换图' : '设图'}</button>
+          <button onclick="deleteItem('${it.id}', '${safeName}')" class="text-xs text-rose-600 hover:bg-rose-50 px-2 py-1 rounded transition">删除</button>
         </div>
       </div>
-    `).join('');
+    `;
+    }).join('');
 
     // 板块下拉选项（写一次就好）
     const sel = document.getElementById('new-item-sector');
@@ -1961,6 +3048,36 @@
     await loadLLMConfig();
     // 加载调度器状态
     await loadSchedulerStatus();
+    // 加载庄家屏蔽开关
+    await loadWhaleToggle();
+  }
+
+  // ============================================================
+  // 策略行为开关：屏蔽庄家信号
+  // ============================================================
+  async function loadWhaleToggle() {
+    const resp = await fetchAPI('/api/global/whale_toggle');
+    const cb = document.getElementById('toggle-ignore-whale');
+    if (cb && resp) cb.checked = !!resp.ignore_whale_signals;
+  }
+
+  async function saveWhaleToggle() {
+    const cb = document.getElementById('toggle-ignore-whale');
+    const span = document.getElementById('whale-toggle-status');
+    if (!cb) return;
+    span.textContent = '保存中...';
+    span.style.color = '#6E6E73';
+    const res = await apiSend('/api/global/whale_toggle', 'POST',
+                              { ignore_whale_signals: cb.checked }, 5000);
+    if (res.ok) {
+      span.textContent = cb.checked ? '✓ 已屏蔽' : '✓ 已启用';
+      span.style.color = '#10B981';
+      setTimeout(() => { span.textContent = ''; }, 2000);
+    } else {
+      span.textContent = '✗ ' + res.error;
+      span.style.color = '#EF4444';
+      cb.checked = !cb.checked;   // 回滚
+    }
   }
 
   // ============================================================
@@ -2403,6 +3520,27 @@
     else showToast('失败：' + res.error, 'error');
   }
 
+  async function setItemImage(itemId, displayName) {
+    const url = prompt(
+      `给"${displayName}"设置 Steam CDN 图片 URL\n\n如何获取：\n1. 去 Steam 社区市场 / 第三方平台找到该饰品\n2. 右键饰品图 → "复制图片链接"\n3. URL 应该形如:\n   https://community.cloudflare.steamstatic.com/economy/image/...\n\n粘贴在下方:（留空则清除）`,
+      ''
+    );
+    if (url === null) return;   // 用户取消
+    const res = await apiSend(
+      `/api/items/${encodeURIComponent(itemId)}/image`,
+      'POST',
+      { image_url: url.trim() },
+      8000
+    );
+    if (res.ok) {
+      showToast(url.trim() ? '✓ 图片已设置' : '✓ 图片已清除');
+      loadSettingsPage();
+      bootstrapData();   // 刷新首页卡片
+    } else {
+      showToast('失败：' + res.error, 'error');
+    }
+  }
+
   // 把 nav-status-pill 接到 api-status 的内容
   function syncNavStatus() {
     const src = document.getElementById('api-status');
@@ -2540,6 +3678,152 @@
       if (cur >= num) clearInterval(tick);
     }, 25);
   });
+
+  /* ============================================================
+     WebGL Doppler 着色器背景
+     CS2 多普勒七彩流体动画，作为 hero 背景叠加层
+     ============================================================ */
+  (function initDopplerShader() {
+    const canvas = document.getElementById('doppler-canvas');
+    if (!canvas) return;
+    const gl = canvas.getContext('webgl', { antialias: false, premultipliedAlpha: false });
+    if (!gl) return;   // 老浏览器不支持 WebGL，静默降级
+
+    // Vertex shader：fullscreen 四边形
+    const vsSource = `
+      attribute vec2 a_position;
+      varying vec2 v_uv;
+      void main() {
+        v_uv = a_position * 0.5 + 0.5;
+        gl_Position = vec4(a_position, 0.0, 1.0);
+      }
+    `;
+
+    // Fragment shader：CS2 Doppler 七彩流体
+    const fsSource = `
+      precision highp float;
+      uniform float u_time;
+      uniform vec2  u_resolution;
+      varying vec2  v_uv;
+
+      // 简化 simplex 噪声
+      vec2 hash(vec2 p) {
+        p = vec2(dot(p, vec2(127.1, 311.7)), dot(p, vec2(269.5, 183.3)));
+        return -1.0 + 2.0 * fract(sin(p) * 43758.5453123);
+      }
+      float noise(vec2 p) {
+        const float K1 = 0.366025404;
+        const float K2 = 0.211324865;
+        vec2 i = floor(p + (p.x + p.y) * K1);
+        vec2 a = p - i + (i.x + i.y) * K2;
+        vec2 o = (a.x > a.y) ? vec2(1.0, 0.0) : vec2(0.0, 1.0);
+        vec2 b = a - o + K2;
+        vec2 c = a - 1.0 + 2.0 * K2;
+        vec3 h = max(0.5 - vec3(dot(a,a), dot(b,b), dot(c,c)), 0.0);
+        vec3 n = h*h*h*h * vec3(dot(a, hash(i)), dot(b, hash(i+o)), dot(c, hash(i+1.0)));
+        return dot(n, vec3(70.0));
+      }
+
+      void main() {
+        vec2 uv = v_uv;
+        vec2 p  = (uv - 0.5) * vec2(u_resolution.x / u_resolution.y, 1.0);
+        float t = u_time * 0.08;
+
+        // 多层噪声叠加，产生流体漂移
+        float n = 0.0;
+        n += noise(p * 1.5 + vec2(t * 0.6, 0.0)) * 0.6;
+        n += noise(p * 3.0 - vec2(0.0, t * 0.4)) * 0.3;
+        n += noise(p * 6.0 + vec2(t * 0.2, t * 0.3)) * 0.1;
+
+        // 距离中心的衰减（中央深，边缘淡）
+        float dist = length(p);
+        float falloff = smoothstep(1.0, 0.2, dist);
+
+        // CS Doppler 色谱 (粉/紫/蓝/青)
+        vec3 c1 = vec3(1.0,   0.235, 0.675);   // hot pink
+        vec3 c2 = vec3(0.471, 0.294, 0.627);   // purple
+        vec3 c3 = vec3(0.169, 0.525, 0.773);   // blue
+        vec3 c4 = vec3(0.0,   0.788, 1.0);     // cyan
+        vec3 c5 = vec3(0.961, 0.620, 0.043);   // amber accent
+
+        float pos = n * 0.5 + 0.5;
+        vec3 col;
+        if (pos < 0.25) {
+          col = mix(c1, c2, pos * 4.0);
+        } else if (pos < 0.5) {
+          col = mix(c2, c3, (pos - 0.25) * 4.0);
+        } else if (pos < 0.75) {
+          col = mix(c3, c4, (pos - 0.5) * 4.0);
+        } else {
+          col = mix(c4, c5, (pos - 0.75) * 4.0);
+        }
+
+        // 用 falloff 控制整体强度
+        col = mix(vec3(1.0), col, falloff * 0.9);
+
+        gl_FragColor = vec4(col, 1.0);
+      }
+    `;
+
+    function compileShader(source, type) {
+      const shader = gl.createShader(type);
+      gl.shaderSource(shader, source);
+      gl.compileShader(shader);
+      if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+        console.error('Shader error:', gl.getShaderInfoLog(shader));
+        gl.deleteShader(shader);
+        return null;
+      }
+      return shader;
+    }
+
+    const vs = compileShader(vsSource, gl.VERTEX_SHADER);
+    const fs = compileShader(fsSource, gl.FRAGMENT_SHADER);
+    if (!vs || !fs) return;
+
+    const program = gl.createProgram();
+    gl.attachShader(program, vs);
+    gl.attachShader(program, fs);
+    gl.linkProgram(program);
+    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+      console.error('Program link error:', gl.getProgramInfoLog(program));
+      return;
+    }
+    gl.useProgram(program);
+
+    // 全屏四边形
+    const buffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
+    const posLoc = gl.getAttribLocation(program, 'a_position');
+    gl.enableVertexAttribArray(posLoc);
+    gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, 0, 0);
+
+    const uTime = gl.getUniformLocation(program, 'u_time');
+    const uResolution = gl.getUniformLocation(program, 'u_resolution');
+
+    function resize() {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const w = canvas.clientWidth * dpr;
+      const h = canvas.clientHeight * dpr;
+      if (canvas.width !== w || canvas.height !== h) {
+        canvas.width = w;
+        canvas.height = h;
+        gl.viewport(0, 0, w, h);
+      }
+    }
+
+    let startTime = performance.now();
+    function frame() {
+      resize();
+      const t = (performance.now() - startTime) / 1000;
+      gl.uniform1f(uTime, t);
+      gl.uniform2f(uResolution, canvas.width, canvas.height);
+      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+      requestAnimationFrame(frame);
+    }
+    frame();
+  })();
 </script>
 </body>
 </html>

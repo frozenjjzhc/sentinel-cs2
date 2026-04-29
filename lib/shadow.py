@@ -24,14 +24,17 @@ def _save(data):
     utils.write_json(SHADOW_FILE, data)
 
 
-def record_signal(item_id: str, label: str, category: str, entry_price: float, context: dict = None):
-    """每次 BUY 信号推送时调用。"""
+def record_signal(item_id: str, label: str, category: str, entry_price: float,
+                  context: dict = None, strategy: str = "phase-sync-v1"):
+    """每次 BUY 信号推送时调用。
+    strategy 字段为未来多策略并存做准备 — 默认当前唯一策略 phase-sync-v1。"""
     if entry_price is None:
         return None
     data = _load()
     sid = str(uuid.uuid4())[:8]
     data["shadows"].append({
         "id": sid,
+        "strategy": strategy,
         "item_id": item_id,
         "label": label,
         "category": category,
@@ -80,9 +83,10 @@ def evaluate_due_shadows(state: dict):
     return updated
 
 
-def get_stats(only_label: str = None) -> dict:
+def get_stats(only_label: str = None, only_strategy: str = None) -> dict:
     """
     返回每类信号的胜率与平均收益。
+    可按 label 或 strategy 过滤。
     {
       "BUY-WHALE": {"count": 5, "avg_return": 0.082, "win_rate": 0.6, "max": 0.15, "min": -0.04},
       ...
@@ -92,6 +96,8 @@ def get_stats(only_label: str = None) -> dict:
     realized = [s for s in data.get("shadows", []) if s.get("evaluated") and s.get("return_7d_pct") is not None]
     if only_label:
         realized = [s for s in realized if s.get("label") == only_label]
+    if only_strategy:
+        realized = [s for s in realized if s.get("strategy") == only_strategy]
 
     stats = {}
     for label in set(s["label"] for s in realized):
@@ -105,6 +111,58 @@ def get_stats(only_label: str = None) -> dict:
             "min_return": min(returns),
         }
     return stats
+
+
+def get_strategy_summary() -> dict:
+    """
+    按策略汇总：每个策略的总数据点 / 平均收益 / 综合胜率。
+    {
+      "phase-sync-v1":    {"count": 12, "avg_return": 0.034, "win_rate": 0.58},
+      "rsi-reversion-v1": {"count":  8, "avg_return": 0.052, "win_rate": 0.75},
+    }
+    用于 dashboard 「策略管控」页对比展示。
+    """
+    data = _load()
+    realized = [s for s in data.get("shadows", []) if s.get("evaluated") and s.get("return_7d_pct") is not None]
+
+    out = {}
+    for sid in set(s.get("strategy", "phase-sync-v1") for s in realized):
+        subset = [s for s in realized if s.get("strategy", "phase-sync-v1") == sid]
+        if not subset:
+            continue
+        returns = [s["return_7d_pct"] for s in subset]
+        out[sid] = {
+            "count":      len(subset),
+            "avg_return": sum(returns) / len(returns),
+            "win_rate":   sum(1 for r in returns if r > 0) / len(returns),
+            "max_return": max(returns),
+            "min_return": min(returns),
+        }
+    return out
+
+
+def has_recent_signal(item_id: str, strategy: str, label: str, hours: int = 4) -> bool:
+    """
+    多策略 dedup：检查该 item × strategy × label 在最近 N 小时内是否已记录过 shadow。
+    用于 inactive 策略的 shadow 双跟跑去重。
+    """
+    from datetime import datetime, timedelta
+    data = _load()
+    cutoff = datetime.now().astimezone() - timedelta(hours=hours)
+    for s in data.get("shadows", []):
+        if s.get("item_id") != item_id:
+            continue
+        if s.get("strategy") != strategy:
+            continue
+        if s.get("label") != label:
+            continue
+        try:
+            t = utils.parse_iso(s.get("entry_time", ""))
+            if t >= cutoff:
+                return True
+        except Exception:
+            pass
+    return False
 
 
 def get_recent(limit: int = 10) -> list:

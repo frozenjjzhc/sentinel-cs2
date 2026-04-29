@@ -82,7 +82,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="Sentinel CS2 Monitor API",
-    version="1.0.0",
+    version="2.0.0",
     description="本地状态文件 → REST API 桥接层 + 前端 dashboard + 嵌入式调度器。",
     lifespan=lifespan,
 )
@@ -147,6 +147,7 @@ def _item_summary(item: dict) -> dict:
         "name": item.get("name"),
         "short_name": item.get("short_name"),
         "url": item.get("url"),
+        "image_url": item.get("image_url"),
         "phase": item.get("phase"),
         "current_stage": item.get("current_stage"),
         "price": last.get("price"),
@@ -431,6 +432,10 @@ class BudgetRequest(BaseModel):
     planned_total_cny: float     # 总仓位预算 ¥
 
 
+class WhaleToggleRequest(BaseModel):
+    ignore_whale_signals: bool   # True = 屏蔽庄家信号
+
+
 class LegacyRequest(BaseModel):
     quantity: Optional[float] = None       # 把数（None + action=remove → 清除）
     avg_entry_price: Optional[float] = None
@@ -460,6 +465,123 @@ def set_budget(body: BudgetRequest):
     state.setdefault("global", {})["planned_total_cny"] = body.planned_total_cny
     state_mod.save_state(state)
     return {"ok": True, "planned_total_cny": body.planned_total_cny}
+
+
+# ---------- 策略管控 ----------
+from lib import strategies as strategies_mod
+
+
+class StrategyActiveRequest(BaseModel):
+    strategy_id: str
+
+
+@app.get("/api/strategies")
+def list_strategies():
+    """返回所有可用策略元信息 + 当前启用 + 各自的 shadow 表现汇总。"""
+    state = _load_state_or_404()
+    active = state.get("global", {}).get("active_strategy", "phase-sync-v1")
+    perf = shadow_mod.get_strategy_summary()
+    return {
+        "active":     active,
+        "strategies": strategies_mod.list_meta(),
+        "performance": perf,    # {strategy_id: {count, win_rate, avg_return, ...}}
+    }
+
+
+@app.post("/api/strategies/active")
+def set_active_strategy(body: StrategyActiveRequest):
+    """切换当前启用策略。inactive 策略仍会跟跑 shadow，只是不再推送。"""
+    if body.strategy_id not in strategies_mod.REGISTRY:
+        valid = list(strategies_mod.REGISTRY.keys())
+        raise HTTPException(400, f"未知策略: {body.strategy_id}。可选: {valid}")
+    state = _load_state_or_404()
+    state.setdefault("global", {})["active_strategy"] = body.strategy_id
+    state_mod.save_state(state)
+    return {"ok": True, "active_strategy": body.strategy_id}
+
+
+# ---------- 网格策略：启用 / 状态查询 ----------
+class GridToggleRequest(BaseModel):
+    item_id: str
+    active:  bool
+
+
+@app.get("/api/grid/{item_id}")
+def get_grid_state(item_id: str):
+    """读取某品种的网格状态。"""
+    state = _load_state_or_404()
+    item = next((it for it in state.get("items", []) if it["id"] == item_id), None)
+    if not item:
+        raise HTTPException(404, f"item not found: {item_id}")
+    grid = item.get("grid_state")
+    if not grid:
+        return {"active": False, "grid_state": None}
+    return {"active": True, "grid_state": grid}
+
+
+@app.post("/api/grid/toggle")
+def toggle_grid(body: GridToggleRequest):
+    """启用 / 关闭某品种的网格策略。
+    启用时自动用当前 ma_30 初始化网格中心。"""
+    from lib.strategies import grid_half_v1
+    from lib import indicators as ind_mod
+
+    state = _load_state_or_404()
+    item = next((it for it in state.get("items", []) if it["id"] == body.item_id), None)
+    if not item:
+        raise HTTPException(404, f"item not found: {body.item_id}")
+
+    if body.active:
+        # 计算当前 ma_30 作为网格中心
+        ind = ind_mod.compute_indicators(item.get("history", []))
+        ma_30 = ind.get("ma_month")
+        if not ma_30 or ma_30 <= 0:
+            raise HTTPException(400, "数据不足以计算 30 日均价（至少需要 30 天历史）")
+        item["grid_state"] = grid_half_v1._init_grid_state(item, ma_30)
+    else:
+        # 关闭：保留状态但 active=False（保留持仓记录便于查询）
+        if item.get("grid_state"):
+            item["grid_state"]["active"] = False
+
+    state_mod.save_state(state)
+    return {"ok": True, "grid_state": item.get("grid_state")}
+
+
+@app.post("/api/grid/{item_id}/restart")
+def restart_grid(item_id: str):
+    """突破退出后手动重启网格（重新锚定中心）。"""
+    from lib.strategies import grid_half_v1
+    from lib import indicators as ind_mod
+
+    state = _load_state_or_404()
+    item = next((it for it in state.get("items", []) if it["id"] == item_id), None)
+    if not item:
+        raise HTTPException(404, f"item not found: {item_id}")
+    ind = ind_mod.compute_indicators(item.get("history", []))
+    ma_30 = ind.get("ma_month")
+    if not ma_30 or ma_30 <= 0:
+        raise HTTPException(400, "数据不足以重新锚定")
+    item["grid_state"] = grid_half_v1._init_grid_state(item, ma_30)
+    state_mod.save_state(state)
+    return {"ok": True, "grid_state": item["grid_state"]}
+
+
+# ---------- 庄家信号屏蔽开关 ----------
+@app.get("/api/global/whale_toggle")
+def get_whale_toggle():
+    """读取是否屏蔽庄家信号。"""
+    state = _load_state_or_404()
+    return {"ignore_whale_signals": bool(state.get("global", {}).get("ignore_whale_signals", False))}
+
+
+@app.post("/api/global/whale_toggle")
+def set_whale_toggle(body: WhaleToggleRequest):
+    """开/关庄家信号干扰。
+    True = 屏蔽：BUY-WHALE / A1-WHALE-STOP / 庄家 bias 升级 全部失效。"""
+    state = _load_state_or_404()
+    state.setdefault("global", {})["ignore_whale_signals"] = body.ignore_whale_signals
+    state_mod.save_state(state)
+    return {"ok": True, "ignore_whale_signals": body.ignore_whale_signals}
 
 
 def _find_item(state, item_id):
@@ -946,6 +1068,22 @@ async def scheduler_set_mode(body: SchedulerModeRequest):
     else:
         await scheduler_mod.stop()
     return {"ok": True, "mode": body.mode}
+
+
+class ItemImageRequest(BaseModel):
+    image_url: str
+
+
+@app.post("/api/items/{item_id}/image")
+def set_item_image(item_id: str, body: ItemImageRequest):
+    """手动设置某品种的 Steam CDN 图片 URL（如果 scraper 抓不到可手动指定）。"""
+    state = _load_state_or_404()
+    item = _find_item(state, item_id)
+    if not item:
+        raise HTTPException(404, f"item not found: {item_id}")
+    item["image_url"] = body.image_url.strip() if body.image_url else None
+    state_mod.save_state(state)
+    return {"ok": True, "image_url": item.get("image_url")}
 
 
 @app.delete("/api/items/{item_id}")
