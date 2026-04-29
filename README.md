@@ -12,15 +12,32 @@
 
 ---
 
+## ✨ v2.0.0 重点（2026-04 发布）
+
+| 维度 | 变化 |
+|---|---|
+| 🧠 **多策略架构** | 单策略 → **4 套并行**（趋势同步 / RSI 反转 / 均值回归 / 半网格），active 推送，其他 shadow 跟跑做实时对比 |
+| 🎨 **视觉品牌重塑** | 苹果式 Liquid Glass · 战术 UI 网格 · 3D AK-47 SVG · WebGL Doppler 着色器 |
+| 🖼️ **真实饰品图** | 自动从 SteamDT 抓取 Steam CDN 主图，概览卡 + 设置页都显示，可手动换图 |
+| 💰 **总预算驱动** | `planned_total_cny` → 仓位百分比、可用余额、集中度警告 |
+| 🔢 **数量精确** | 新 `qty_pieces` 字段，修复了把仓位百分比当数量的成本计算 bug |
+| 🕸️ **半网格策略** | T+7 锁感知 + 阶梯式分批 + 紧急 z-score 退出 |
+| 🐋 **Whale 开关** | 设置页一键忽略 BUY-WHALE 信号 |
+
+完整变更日志见 [CHANGELOG.md](CHANGELOG.md)。
+
+---
+
 ## 一、项目能做什么
 
-**自动监控 4+ 个 CS2 饰品**（可任意扩展），**每 10 分钟**采集一次价格 / 量能 / 大盘 / 持仓数据，按内置策略评估**买卖信号**（5 种 BUY 类 + 4 种 SELL 类 + TP 止盈 + 6 种庄家阶段识别），**触发即推送**到 PushPlus 微信（最多 3 个接收人），并保存完整的：
+**自动监控 4+ 个 CS2 饰品**（可任意扩展），**每 10 分钟**采集一次价格 / 量能 / 大盘 / 持仓数据，**4 套策略并行评估买卖信号**（趋势同步 / RSI 反转 / 均值回归 / 半网格），**触发即推送**到 PushPlus 微信（最多 3 个接收人），并保存完整的：
 
 - ✅ 实时价格历史（90 天滚动）
+- ✅ **多策略并行**：active 策略实际推送，其他 shadow 跟跑做实时对比回测
 - ✅ 信号触发日志（每次扫描必写，带 bias 应用记录）
 - ✅ 推送记录（用于复盘）
-- ✅ 影子仓位回测（每个 BUY 信号自动跟踪 7 日收益）
-- ✅ 总仓位风险面板（成本/市值/集中度/警告）
+- ✅ 影子仓位回测（每个 BUY 信号自动跟踪 7 日收益，按策略分组）
+- ✅ 总仓位风险面板（**总预算驱动**，成本/市值/集中度/警告 + `qty_pieces` 精确数量）
 - ✅ 庄家阶段切换记录
 - ✅ 跨品种相对强度（RS）+ 板块联动分析
 - ✅ 每日 23:00 自动复盘报告（推微信 + 写 state）
@@ -30,12 +47,13 @@
 - ✅ **bias 调节器**：基本面偏置 → 自动调整 BUY 优先级 + 止损/止盈阈值
 - ✅ **可选 LLM 接入**：Anthropic / OpenAI / DeepSeek / 任意 OpenAI 兼容协议
 
-**配套前端**（Sentinel UI）：苹果式极简多页 SPA，5 个功能页，**直接连接后端做增删改**：
-- **概览**：实时价格 / hero 卡片 / 视差视觉
-- **走势图**：折线 / K 线切换 + 24H/3D/7D 范围 + 成交量柱状图
-- **仓位管理**：每个品种内嵌操作栏（加仓 / 卖出 / 设套牢仓 / 清空），直接写后端
-- **AI 复盘**：Shadow 模拟收益统计 + AI 每日评论 + 参数调整提案审批
-- **设置**：PushPlus token 增删 / 监控品种增删（含板块下拉）/ LLM 配置 / 监控心跳
+**配套前端**（Sentinel UI）：苹果式极简多页 SPA，**6 个功能页**，**直接连接后端做增删改**：
+- **概览**：Liquid Glass 卡片 / 3D AK-47 SVG / WebGL Doppler 着色器 / 战术 UI 网格 / 真实 Steam 饰品图
+- **走势图**：折线 / K 线切换 + 24H/3D/7D 范围 + 时间戳定位 + 鼠标悬停 tooltip + 增量成交量
+- **仓位管理**：每个品种内嵌操作栏（加仓 / 卖出 / 设套牢仓 / 清空），按总预算计算占比，直接写后端
+- **策略管控**：tab 切换 4 套策略 + 单策略详情面板 + 实时 shadow 对比 + 网格独立控制
+- **AI 复盘**：Shadow 模拟收益统计（按策略分组）+ AI 每日评论 + 参数调整提案审批
+- **设置**：PushPlus token 增删 / 监控品种增删（含板块下拉 + 换图）/ 总预算 / Whale 开关 / LLM 配置 / 监控心跳
 
 ---
 
@@ -58,8 +76,12 @@
 │   │ monitor_fast.py│  │ monitor_slow.py│  │daily_review.py │     │
 │   │   每 10 min    │  │  每 1 小时      │  │  每天 23:00    │     │
 │   │   BUY 信号     │  │ SELL + TP止盈  │  │ 汇总 + 截图   │     │
-│   │  (bias调优先级)│  │ (bias调阈值)   │  │ + AI 评论(可选)│     │
+│   │ (4 策略并跑)   │  │ (bias调阈值)   │  │ + AI 评论(可选)│     │
 │   └────────────────┘  └────────────────┘  └────────────────┘     │
+│                                                                  │
+│   ★ lib/strategies/ ─ v2.0.0 多策略注册表                         │
+│     phase-sync-v1 / rsi-reversion-v1 / mean-reversion-v1 /       │
+│     grid-half-v1   ← active 推送，其他 shadow 跟跑                │
 │                                                                  │
 │   lib/ 模块：scraper · indicators · stages · signals · pusher     │
 │            state · circuit_breaker · shadow · correlation        │
@@ -98,12 +120,12 @@
        └──────────┘    └────┬─────┘    └──────────┘
                             │
                             ▼
-                    ┌──────────────────────┐
-                    │  Sentinel UI (SPA)   │
-                    │  概览 / 走势图 /     │
-                    │  仓位管理 / AI复盘 / │
-                    │  设置                 │
-                    └──────────────────────┘
+                    ┌──────────────────────────┐
+                    │  Sentinel UI (SPA, 6 页) │
+                    │  概览 / 走势图 /         │
+                    │  仓位管理 / 策略管控 /   │
+                    │  AI 复盘 / 设置          │
+                    └──────────────────────────┘
 ```
 
 ### 决策闭环（bias 调节器）
@@ -225,7 +247,7 @@ schtasks /Create /TN "CS2 Daily Review" /TR "D:\claude\xuanxiao\run_daily_review
 
 **dashboard 内容**：
 - 顶部 nav 状态 pill 显示心跳：`🟢 监控运行中 · X 分钟前更新`
-- 5 个功能页：概览 / 走势图 / 仓位管理 / AI 复盘 / 设置
+- **6 个功能页**：概览 / 走势图 / 仓位管理 / 策略管控 / AI 复盘 / 设置
 - 数据每 30 秒自动刷新
 
 **停止整套**：关闭 Sentinel.bat 那个窗口（点 X 或 Ctrl+C）。
@@ -338,15 +360,28 @@ python add_item.py
 
 ---
 
-## 六、策略简介
+## 六、多策略架构
 
-详见 `strategy_v2.md`。核心：
+v2.0.0 把单策略升级为 **4 套策略并行**：active 策略实际推送，其他 shadow 跟跑做实时对比回测。每个策略 ID 独立、参数独立、shadow 数据按策略分组，方便横向比胜率。
+
+### 6.0 策略一览
+
+| 策略 ID | 类型 | 触发逻辑 | 适用场景 |
+|---|---|---|---|
+| `phase-sync-v1` | 趋势同步（默认 active）| 6 阶段识别 + bias 调节器 + 5 BUY × 4 SELL × TP | 主流默认，覆盖面最广 |
+| `rsi-reversion-v1` | 反转抄底 | RSI(14) ≤ 30 + 距均值 ≥ 3% + 阶段 / 仓位 / 历史 6 道闸 | 急跌后博弈反弹 |
+| `mean-reversion-v1` | 均值回归 | 20 日 z-score ≤ -2σ + 距均值 ≥ 5% + 历史 ≥ 40 天 | 长周期偏离 |
+| `grid-half-v1` | 半网格 | 网格步长 5%、最多 3 档、单档 ≤ 10%、紧急 z-score -2.5σ + T+7 锁感知 | 横盘震荡 |
+
+**切换方式**：策略管控页顶部 tab 一键切；后端把 `active_strategy` 写到 state，所有推送会立刻走新策略。
+
+### 6.1 趋势同步（phase-sync-v1）核心信号
 
 | 信号类 | 优先级 | 触发频率 | 说明 |
 |---|---|---|---|
 | **A 类止损**（持仓时）| 最高，必推 | 1H | 固定 -15% / 移动 -12% / 跌破强支撑 / 1H 急跌 |
-| **B 类警示** | 第二 | 1 H | 跌破主支撑 / 大盘走弱 / 量价背离假突破 |
-| **C 类强买入** | 第三 | 1 H | 突破前期高 + 大盘配合 + 量价确认 |
+| **B 类警示** | 第二 | 1H | 跌破主支撑 / 大盘走弱 / 量价背离假突破 |
+| **C 类强买入** | 第三 | 1H | 突破前期高 + 大盘配合 + 量价确认 |
 | **D4 突破回踩** | 第四 | 10 min | C 信号后回踩缩量再启动（最高质量入场）|
 | **D 类买入** | 第五 | 10 min | 底部反弹 / 5-10 均线金叉 / 深跌 V 反 |
 | **TP 止盈** | 软信号 | 1H | 浮盈 +20% / +40% / +70% 触发，按 bias 缩放 |
@@ -358,7 +393,17 @@ python add_item.py
 - 庄家信号：whale_floor_price 替代普通止损（庄家承诺底守不住才离场）
 - CS2 适配：止损 -15%、止盈 +20/40/70%（远比股票宽，匹配 CS2 真实波动）
 
-### 6.1 Bias 调节器（A + B 增强）
+详见 `strategy_v2.md`。
+
+### 6.2 Shadow 影子跟跑
+
+每次 fast cycle 会**对所有 4 套策略**运行一遍 BUY 评估：
+- active 策略：信号实际推送 + 写 shadow（带策略标签）
+- 其他 3 套：仅写 shadow，不推送，4 小时去重防重复
+
+AI 复盘页的 shadow 表会按策略 ID 分组，能直接看到"过去 30 天 RSI-反转 vs 趋势同步"的胜率对比。
+
+### 6.3 Bias 调节器（A + B 增强）
 
 LLM 分类 / 关键词分类得到的 `fundamentals.bias` 会**实时**调节规则引擎参数：
 
@@ -410,14 +455,20 @@ D:\claude\xuanxiao\
 │   ├── utils.py                     时间/JSON/日志
 │   ├── state.py                     状态读写 + 历史维护
 │   ├── pusher.py                    PushPlus 推送 + Telegram fallback
-│   ├── scraper.py                   Playwright SteamDT 抓取
-│   ├── indicators.py                多时间框架 MA + 动能 + 量价
+│   ├── scraper.py                   Playwright SteamDT 抓取（含 Steam CDN 图）
+│   ├── indicators.py                MA + RSI + z-score + 动能 + 量价
 │   ├── stages.py                    6 阶段识别
-│   ├── signals.py                   BUY / SELL / TP + bias 调节器
+│   ├── signals.py                   phase-sync 共享信号库 + bias 调节器
+│   ├── ★ strategies/                ⭐ v2.0.0 多策略注册表
+│   │   ├── __init__.py              REGISTRY + 分发器 + shadow 跟跑
+│   │   ├── phase_sync_v1.py         趋势同步（默认 active）
+│   │   ├── rsi_reversion_v1.py      RSI 反转
+│   │   ├── mean_reversion_v1.py     均值回归
+│   │   └── grid_half_v1.py          半网格 + T+7 锁
 │   ├── circuit_breaker.py           应急熔断
-│   ├── shadow.py                    影子回测
+│   ├── shadow.py                    影子回测（按策略分组）
 │   ├── correlation.py               跨品种 RS + 板块分析
-│   ├── portfolio.py                 总仓位风险面板
+│   ├── portfolio.py                 总仓位风险面板（总预算驱动）
 │   ├── screenshots.py               K 线截图归档
 │   ├── news_monitor.py              Steam News（关键词 + LLM 双轨）
 │   ├── telegram.py                  Telegram bot 接口（预留）
@@ -452,11 +503,17 @@ D:\claude\xuanxiao\
 | 想做的事 | 路径 |
 |---|---|
 | 看实时数据 | 浏览器打开 `http://localhost:8000` |
-| 加仓 / 卖出 / 套牢仓 | 仓位管理页 → 卡片操作行 |
+| 加仓 / 卖出 / 套牢仓 | 仓位管理页 → 卡片操作行（带 `qty_pieces`）|
+| **切换 active 策略** | **策略管控页 → 顶部 tab 一键切**（4 选 1）|
+| **看 4 策略胜率对比** | 策略管控页 → 单策略详情面板 / AI 复盘页 → Shadow 区 |
+| **网格策略独立控制** | 策略管控页 → 网格 tab（开关 + 重启 + 查看 grid_state）|
 | 加 / 删 PushPlus token | 设置页 → PushPlus 卡片 |
 | 加 / 删监控品种 | 设置页 → 监控品种卡片（板块下拉 6 选 1）|
+| **设置总预算** | **设置页 → 总预算卡片**（决定仓位百分比）|
+| **改饰品图** | 设置页 → 监控品种 → 「换图」按钮粘贴 URL |
+| **Whale 信号开关** | 设置页 → 全局开关 → 忽略 BUY-WHALE |
 | 配置 LLM | 设置页 → 大模型接入卡片 |
-| 看 Shadow 模拟收益 | AI 复盘页 → Shadow 区 |
+| 看 Shadow 模拟收益 | AI 复盘页 → Shadow 区（按策略分组）|
 | 看 AI 每日复盘 | AI 复盘页 → 评论区 |
 | 审批参数提案 | AI 复盘页 → 参数提案区（✓ 应用 / ✗ 拒绝）|
 | 看监控心跳 | 顶部 nav 状态 pill / 设置页底部 |
@@ -477,6 +534,12 @@ D:\claude\xuanxiao\
 | 看任务状态 | `schtasks /Query /TN "CS2 Monitor Fast" /V /FO LIST` |
 | 看某品种最新数据 | `curl http://localhost:8000/api/items/m4a4-buzz-kill-fn` |
 | 看总仓位 | `curl http://localhost:8000/api/portfolio` |
+| **看 4 策略列表 + 性能** | `curl http://localhost:8000/api/strategies` |
+| **切换 active 策略** | `curl -X POST http://localhost:8000/api/strategies/active -H "Content-Type: application/json" -d "{\"id\":\"rsi-reversion-v1\"}"` |
+| **看某品种网格状态** | `curl http://localhost:8000/api/grid/m4a4-buzz-kill-fn` |
+| **重启网格** | `curl -X POST http://localhost:8000/api/grid/m4a4-buzz-kill-fn/restart` |
+| **设置总预算** | `curl -X POST http://localhost:8000/api/global/budget -d "{\"planned_total_cny\":50000}"` |
+| **覆盖饰品图** | `curl -X POST http://localhost:8000/api/items/<id>/image -d "{\"image_url\":\"https://...\"}"` |
 | 看影子统计 | `curl http://localhost:8000/api/shadow/stats` |
 | 看监控心跳 | `curl http://localhost:8000/api/health/freshness` |
 | 测 LLM 连通 | `curl -X POST http://localhost:8000/api/llm/test` |
@@ -578,6 +641,16 @@ schtasks /Query /TN "CS2 Monitor Fast" /V /FO LIST | Select-String "上次结果
 Copy-Item m4a4_buzz_kill_state.json.bak m4a4_buzz_kill_state.json
 ```
 
+### 10.7 升级到 v2.0.0 后状态字段缺失
+
+老用户首次启动 v2.0.0 会自动迁移 state（v3 → v4），补全 `qty_pieces` / `planned_total_cny` / `active_strategy` / `strategies` / `grid_state` / `image_url` / `ignore_whale_signals` 等字段。如果出错：
+```powershell
+# 备份后用 example 模板重置（会丢仓位历史）
+Copy-Item m4a4_buzz_kill_state.json m4a4_buzz_kill_state.json.bak
+Copy-Item state.example.json m4a4_buzz_kill_state.json
+```
+然后到设置页重填总预算、PushPlus token 即可。
+
 ---
 
 ## 十一、维护建议
@@ -588,11 +661,13 @@ Copy-Item m4a4_buzz_kill_state.json.bak m4a4_buzz_kill_state.json
 
 ### 每周（主动）
 - 看一次复盘报告，看影子信号统计判断哪类信号该淘汰/调整
+- **看一眼策略管控页 4 套策略 shadow 胜率**，判断要不要切 active
 - 用 `python add_item.py` 加 1-2 个想关注的新品种
 
 ### 每月（策略迭代）
 - 找 Claude 主对话："最近一个月 D1 信号胜率 30%，要不要把阈值调严？"
 - Claude 帮你改 thresholds 后跟踪 7-14 天看效果
+- **比 4 套策略的累计胜率 / 平均收益**，决定下个月用哪套做 active
 
 ### 每年（清理）
 - shadow_signals.json 长大后可以归档：复制成 `shadow_signals_2026.json`，新文件 reset
@@ -618,10 +693,12 @@ Copy-Item m4a4_buzz_kill_state.json.bak m4a4_buzz_kill_state.json
 
 ### 当前限制
 - K 线截图依赖 SteamDT 页面 DOM 结构，对方改版可能失效
+- Steam CDN 饰品图依赖 SteamDT 页面 `img.zbt.com` 链接，失效时可在设置页手动换图
 - 同一品种不同磨损（FN/MW/FT 等）需要分别加为独立 item
 - 没有自动下单功能（Steam 市场不开放 API，只能你手动）
 - shadow signal 需要 7+ 天才能开始统计胜率（前期数据稀疏）
 - LLM 参数提案需要 ≥5 条 shadow 样本才会生成
+- 4 策略 shadow 跟跑会让一次 cycle 评估变多，但不影响推送速度（仅 active 推送）
 
 ### 路线图
 - [x] ~~苹果式多页 SPA dashboard~~
@@ -631,6 +708,12 @@ Copy-Item m4a4_buzz_kill_state.json.bak m4a4_buzz_kill_state.json
 - [x] ~~LLM 接入：每日复盘评论（Phase 3）~~
 - [x] ~~LLM 接入：参数调整提案 + 审批（Phase 4）~~
 - [x] ~~Bias 调节器（A+B 增强）~~
+- [x] ~~多策略架构（v2.0.0：4 套并行 + shadow 跟跑 + 注册表分发）~~
+- [x] ~~视觉品牌重塑（v2.0.0：Liquid Glass + 3D AK-47 + WebGL Doppler）~~
+- [x] ~~真实 Steam 饰品图（v2.0.0：自动抓 + 手动换图）~~
+- [x] ~~总预算驱动的仓位百分比（v2.0.0）~~
+- [x] ~~`qty_pieces` 精确数量计算（v2.0.0）~~
+- [x] ~~半网格策略 T+7 锁感知（v2.0.0：grid-half-v1）~~
 - [ ] LLM 接入：庄家公告自动解析（Phase 2）
 - [ ] 走势图加技术指标叠加（MA / 成交量 / 关键位）
 - [ ] WebSocket 实时推送（信号触发时前端立刻闪烁）
@@ -647,12 +730,14 @@ Copy-Item m4a4_buzz_kill_state.json.bak m4a4_buzz_kill_state.json
 | 层 | 技术 |
 |---|---|
 | 监控引擎 | Python 3.9+ · Playwright · Requests |
+| 策略层 | 注册表分发器 · 4 套独立模块 · Shadow 跟跑 |
 | API 服务 | FastAPI · Uvicorn · Pydantic |
-| 前端 | HTML5 · Tailwind CSS · 单文件 SPA |
+| 前端 | HTML5 · Tailwind CSS · WebGL 着色器 · 单文件 SPA |
+| 视觉 | Liquid Glass · CSS 3D Transforms · simplex 噪声 |
 | 推送 | PushPlus · Telegram Bot API |
-| 调度 | Windows Task Scheduler |
-| 持久化 | JSON（atomic write）|
-| 数据源 | SteamDT · Steam Web API |
+| 调度 | 嵌入式 asyncio scheduler / Windows Task Scheduler |
+| 持久化 | JSON（atomic write，schema v4）|
+| 数据源 | SteamDT · Steam Web API · Steam CDN（饰品图）|
 | LLM 抽象 | Anthropic API · OpenAI 兼容协议 |
 | 智能助手 | Claude（Cowork mode）|
 
@@ -661,11 +746,11 @@ Copy-Item m4a4_buzz_kill_state.json.bak m4a4_buzz_kill_state.json
 **项目至此完整闭环**：
 
 ```
-数据采集 → 指标计算 → 阶段识别 → 信号判定 → 风险控制 → 推送通知
-   ↑                                          ↓
+数据采集 → 指标计算 → 阶段识别 → 4 策略并跑 → 风险控制 → 推送通知
+   ↑                                              ↓
    └── 参数迭代 ← 用户审批 ← LLM 提案 ← 影子回测 ← 复盘归档
-                                                ↓
-                                       前端可视化 + Web CRUD
+                                                    ↓
+                                           前端可视化 + Web CRUD
 ```
 
 🟢 **100% 数据本地化** · **规则引擎 + 可选 LLM 双层** · **完全开源可定制**
