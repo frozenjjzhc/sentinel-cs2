@@ -50,6 +50,12 @@ PARAMS = {
 }
 
 
+def _p(state, key):
+    """读 state.global.strategies['mean-reversion-v1'].params[key]，缺失回落 PARAMS。"""
+    from . import get_strategy_params
+    return get_strategy_params(state, META["id"]).get(key, PARAMS[key])
+
+
 def evaluate_buy_signals(state, item, ind, stage, market) -> list:
     history = item.get("history", [])
     P = ind.get("P")
@@ -61,13 +67,13 @@ def evaluate_buy_signals(state, item, ind, stage, market) -> list:
     if pos.get("total_qty_pct", 0) >= 1.0:
         return []
 
-    # 2. 阶段过滤（同 RSI 战法）
-    if stage in PARAMS["blocked_stages"]:
+    # 2. 阶段过滤
+    if stage in _p(state, "blocked_stages"):
         return []
 
-    # 3. 历史天数充足（要求比 RSI 更严，因为 σ 计算需要更多样本）
-    days_of_data = len(history) // 144   # 10min × 144 = 24h
-    if days_of_data < PARAMS["min_history_days"]:
+    # 3. 历史天数充足
+    days_of_data = len(history) // 144
+    if days_of_data < _p(state, "min_history_days"):
         return []
 
     # 4. 庄家活跃 → 避开
@@ -75,17 +81,16 @@ def evaluate_buy_signals(state, item, ind, stage, market) -> list:
         return []
 
     # 5. 计算日线 z-score
-    z, mean_p, std_p = ind_mod.compute_daily_zscore(
-        history, lookback_days=PARAMS["lookback_days"]
-    )
-    if z is None or z > PARAMS["z_score_threshold"]:
+    lookback = _p(state, "lookback_days")
+    z, mean_p, std_p = ind_mod.compute_daily_zscore(history, lookback_days=lookback)
+    if z is None or z > _p(state, "z_score_threshold"):
         return []
 
-    # 6. 距均线绝对距离够大（避免低波动品种触发过敏）
+    # 6. 距均线绝对距离够大
     if not mean_p or mean_p <= 0:
         return []
     distance = (mean_p - P) / mean_p
-    if distance < PARAMS["min_distance_to_mean"]:
+    if distance < _p(state, "min_distance_to_mean"):
         return []
 
     return [{
@@ -93,7 +98,7 @@ def evaluate_buy_signals(state, item, ind, stage, market) -> list:
         "category": "BUY",
         "priority": 8,
         "advice":   (
-            f"距 {PARAMS['lookback_days']} 日均价 z={z:.2f}σ "
+            f"距 {lookback} 日均价 z={z:.2f}σ "
             f"(-{distance*100:.1f}%)，统计意义上的极端超卖位"
         ),
         "next_tier": 1,

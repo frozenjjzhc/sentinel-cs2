@@ -256,7 +256,9 @@ def run_cycle(test_mode: bool = False, verbose: bool = False):
                         )
                     # 网格策略：信号推送后更新 grid_state（标记该档已买入或已卖出）
                     if chosen_signal.get("grid_action"):
-                        strategies_mod.apply_grid_fill(item, chosen_signal, fill_price=ind.get("P"))
+                        strategies_mod.apply_grid_fill(
+                            item, chosen_signal, fill_price=ind.get("P"), state=state_obj
+                        )
 
             # 10b. Shadow 双跟跑：记录 INACTIVE 策略的"假想"信号（用于策略对比）
             #      不推送给用户，仅记到 shadow_signals.json，4 小时内同信号自动 dedup

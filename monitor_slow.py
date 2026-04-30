@@ -250,25 +250,10 @@ def run_cycle(test_mode: bool = False, verbose: bool = False):
         )
 
     # 4. Full 2-tier sector analysis
+    #    跟涨机会不再单独推送（用户嫌噪音），改为作为 phase-sync 策略的多因子加成。
+    #    sector_analysis 仍然写入 state，dashboard 「策略管控/AI 复盘」页可查。
     full_analysis = corr_mod.detect_full_analysis(state_obj)
     state_obj.setdefault("global", {})["sector_analysis"] = full_analysis
-
-    opportunities = corr_mod.find_following_opportunities(state_obj, full_analysis)
-    if opportunities and not test_mode:
-        tokens = state_obj.get("global", {}).get("pushplus_tokens", [])
-        title = f"🔗【主板块跟涨机会】{len(opportunities)} 个品种"
-        body_lines = ["主板块已有强领涨，以下品种未跟上 → 关注跟涨：\n"]
-        items_dict = {it["id"]: it for it in state_obj.get("items", [])}
-        for opp in opportunities[:5]:
-            it = items_dict.get(opp["item_id"])
-            if it:
-                body_lines.append(
-                    f"• {it.get('short_name', opp['item_id'])}: "
-                    f"主板块「{opp['primary_sector']}」领涨 {opp['leader_id']} "
-                    f"+{opp['gap_pct']*100:.1f}% (RS {opp['leader_rs']})"
-                )
-        body_lines.append(f"\n时间：{utils.now_iso()}")
-        pusher.push_to_all(tokens, title, "\n".join(body_lines), state=state_obj)
 
     if verbose:
         print("\n  === 主板块（primary）===")

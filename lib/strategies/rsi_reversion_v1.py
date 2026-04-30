@@ -53,6 +53,12 @@ PARAMS = {
 }
 
 
+def _p(state, key):
+    """读 state.global.strategies['rsi-reversion-v1'].params[key]，缺失时回落 PARAMS。"""
+    from . import get_strategy_params
+    return get_strategy_params(state, META["id"]).get(key, PARAMS[key])
+
+
 def evaluate_buy_signals(state, item, ind, stage, market) -> list:
     history = item.get("history", [])
     P = ind.get("P")
@@ -65,12 +71,12 @@ def evaluate_buy_signals(state, item, ind, stage, market) -> list:
         return []
 
     # 2. 阶段过滤：只在横盘 / 中性 / 吸筹 / 洗盘期间触发
-    if stage in PARAMS["blocked_stages"]:
+    if stage in _p(state, "blocked_stages"):
         return []
 
     # 3. 历史天数充足
     days_of_data = len(history) // 144   # 10min × 144 = 24h
-    if days_of_data < PARAMS["min_history_days"]:
+    if days_of_data < _p(state, "min_history_days"):
         return []
 
     # 4. 庄家活跃 → 避开（盘控期 RSI 失效）
@@ -78,8 +84,9 @@ def evaluate_buy_signals(state, item, ind, stage, market) -> list:
         return []
 
     # 5. 计算日线 RSI
-    rsi = ind_mod.compute_daily_rsi(history, period=PARAMS["rsi_period"])
-    if rsi is None or rsi >= PARAMS["rsi_oversold"]:
+    rsi_period = _p(state, "rsi_period")
+    rsi = ind_mod.compute_daily_rsi(history, period=rsi_period)
+    if rsi is None or rsi >= _p(state, "rsi_oversold"):
         return []
 
     # 6. 距均线空间足够（覆盖手续费 + 利润）
@@ -87,7 +94,7 @@ def evaluate_buy_signals(state, item, ind, stage, market) -> list:
     if not ma_month or ma_month <= 0:
         return []
     distance = (ma_month - P) / ma_month
-    if distance < PARAMS["min_distance_to_mean"]:
+    if distance < _p(state, "min_distance_to_mean"):
         return []
 
     # 满足所有条件 → 触发 RSI-OVERSOLD
@@ -96,7 +103,7 @@ def evaluate_buy_signals(state, item, ind, stage, market) -> list:
         "category":    "BUY",
         "priority":    8,
         "advice":      (
-            f"日线 RSI({PARAMS['rsi_period']}) = {rsi:.1f} 严重超卖，"
+            f"日线 RSI({rsi_period}) = {rsi:.1f} 严重超卖，"
             f"距月均 -{distance*100:.1f}%，预期均值回归（7-21 天）"
         ),
         "next_tier":   1,

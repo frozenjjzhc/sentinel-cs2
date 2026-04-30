@@ -36,6 +36,38 @@ def get_active_id(state: dict) -> str:
     return state.get("global", {}).get("active_strategy", "phase-sync-v1")
 
 
+def get_strategy_params(state: dict, strategy_id: str) -> dict:
+    """
+    返回某策略的合并后参数（state 覆盖 + 模块默认 PARAMS 兜底）。
+    AI 提案应用到 state.global.strategies[sid].params 后，这里读出来就拿到新值；
+    缺失字段自动从模块的 PARAMS 常量补全。
+    """
+    mod = REGISTRY.get(strategy_id)
+    defaults = getattr(mod, "PARAMS", {}) if mod else {}
+    overrides = (
+        state.get("global", {})
+        .get("strategies", {})
+        .get(strategy_id, {})
+        .get("params", {})
+    ) or {}
+    merged = dict(defaults)
+    merged.update(overrides)
+    return merged
+
+
+def get_strategy_param_defaults() -> dict:
+    """
+    所有已注册策略的默认 PARAMS。用于 state 自愈 + LLM 提案 prompt 上下文。
+    形如 {"rsi-reversion-v1": {rsi_period: 14, ...}, ...}
+    """
+    out = {}
+    for sid, mod in REGISTRY.items():
+        defaults = getattr(mod, "PARAMS", None)
+        if defaults:
+            out[sid] = dict(defaults)
+    return out
+
+
 def evaluate_buy_signals(state, item, ind, stage, market, strategy_id: str = None) -> list:
     """
     分发到指定策略（默认当前 active）。
@@ -69,13 +101,15 @@ def evaluate_sell(state, item, ind, strategy_id: str = None) -> list:
     return mod.evaluate_sell_signals(state, item, ind)
 
 
-def apply_grid_fill(item, signal, fill_price=None):
+def apply_grid_fill(item, signal, fill_price=None, state=None):
     """
     网格策略专用：买入/卖出成交后更新 grid_state。
-    其他策略不需要。
+    state 可选；用于读 tplus7_days 等可调参数。
     """
     grid_action = signal.get("grid_action")
     if grid_action == "buy":
-        grid_half_v1.apply_buy_fill(item, signal, fill_price or signal.get("level_price", 0))
+        grid_half_v1.apply_buy_fill(
+            item, signal, fill_price or signal.get("level_price", 0), state=state
+        )
     elif grid_action == "sell":
         grid_half_v1.apply_sell_fill(item, signal)

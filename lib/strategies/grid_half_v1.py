@@ -62,22 +62,35 @@ PARAMS = {
 }
 
 
+def _p(state, key):
+    """读 state.global.strategies['grid-half-v1'].params[key]，缺失回落 PARAMS。"""
+    from . import get_strategy_params
+    return get_strategy_params(state, META["id"]).get(key, PARAMS[key])
+
+
 # ============================================================
-# 网格状态初始化
+# 网格状态初始化（由 backend toggle_grid 调用，用最新 state.params）
 # ============================================================
-def _init_grid_state(item, ma_30):
+def _init_grid_state(item, ma_30, state=None):
     """首次启用网格策略时初始化 item.grid_state。"""
-    levels = PARAMS["grid_levels"]
+    # 兼容旧调用：若没传 state 则用模块默认 PARAMS
+    if state is None:
+        levels = PARAMS["grid_levels"]
+        step_pct = PARAMS["grid_step_pct"]
+        tier_size = PARAMS["max_pos_per_level"]
+    else:
+        levels = _p(state, "grid_levels")
+        step_pct = _p(state, "grid_step_pct")
+        tier_size = _p(state, "max_pos_per_level")
     return {
         "active":         True,
         "center_price":   ma_30,
-        "step_pct":       PARAMS["grid_step_pct"],
+        "step_pct":       step_pct,
         "levels":         levels,
-        "tier_size_pct":  PARAMS["max_pos_per_level"],
+        "tier_size_pct":  tier_size,
         "reserve_used":   False,
-        "exited":         False,         # 突破退出后置 True
+        "exited":         False,
         "positions":      [
-            # 只创建买入档（-1 到 -N），卖出档不持有任何东西
             {"level": -i, "qty_pieces": 0, "entry_price": None, "entry_time": None, "unlock_time": None}
             for i in range(1, levels + 1)
         ],
@@ -86,16 +99,13 @@ def _init_grid_state(item, ma_30):
 
 
 def _ensure_grid_state(item, ma_30):
-    """确保 item.grid_state 存在并初始化。每次评估前调用。"""
     grid = item.get("grid_state")
     if not grid or not grid.get("active"):
-        # 用户没启用网格 → 不评估
         return None
-    # 中心价漂移 ≥ 10% → 重新锚定
     if grid.get("center_price") and ma_30:
         drift = abs(ma_30 - grid["center_price"]) / grid["center_price"]
         if drift > 0.10:
-            grid["center_price"] = ma_30   # 滑动更新
+            grid["center_price"] = ma_30
     return grid
 
 
@@ -131,12 +141,12 @@ def evaluate_buy_signals(state, item, ind, stage, market) -> list:
         return []   # 已突破退出，等待手动重启
 
     # 2. 阶段过滤
-    if stage in PARAMS["blocked_stages"]:
+    if stage in _p(state, "blocked_stages"):
         return []
 
     # 3. 历史足够
     days_of_data = len(item.get("history", [])) // 144
-    if days_of_data < PARAMS["min_history_days"]:
+    if days_of_data < _p(state, "min_history_days"):
         return []
 
     # 4. 庄家活跃 → 避开
@@ -145,45 +155,47 @@ def evaluate_buy_signals(state, item, ind, stage, market) -> list:
 
     # 5. 检查是否需要应急储备触发
     z, _, _ = ind_mod.compute_daily_zscore(item.get("history", []), lookback_days=20)
-    if z is not None and z < PARAMS["emergency_zscore"] and not grid.get("reserve_used"):
+    if z is not None and z < _p(state, "emergency_zscore") and not grid.get("reserve_used"):
         return [{
             "label":    "GRID-EMERGENCY",
             "category": "BUY",
-            "priority": 9,                   # 高优先级
+            "priority": 9,
             "advice":   f"z={z:.2f}σ 极端超卖，触发应急储备一次性加仓另一半（30%）",
-            "qty_pct":  0.50,                # 把另一半全用上（相对预算）
-            "qty_pieces": 0,                 # 待用户确认数量
+            "qty_pct":  0.50,
+            "qty_pieces": 0,
             "grid_action": "emergency",
         }]
 
     # 6. 突破退出检查
+    breakout_pct = _p(state, "breakout_exit_pct")
     deviation = (P - grid["center_price"]) / grid["center_price"]
-    if abs(deviation) > PARAMS["breakout_exit_pct"]:
-        grid["exited"] = True   # 标记退出，下次评估直接 skip
+    if abs(deviation) > breakout_pct:
+        grid["exited"] = True
         return [{
             "label":    "GRID-EXIT",
-            "category": "ALERT",              # 不算 BUY 也不算 SELL
+            "category": "ALERT",
             "priority": 8,
             "advice":   (
-                f"价格距网格中心 {deviation*100:+.1f}%，超出 ±{int(PARAMS['breakout_exit_pct']*100)}%"
+                f"价格距网格中心 {deviation*100:+.1f}%，超出 ±{int(breakout_pct*100)}%"
                 f"，已自动退出网格策略。回到中心 ±5% 内可手动重启。"
             ),
         }]
 
-    # 7. 普通网格触发：当前档位有买点 + 该档无持仓
+    # 7. 普通网格触发
     target_level = _current_level(P, grid["center_price"], grid["step_pct"])
     if target_level <= -1 and target_level >= -grid["levels"]:
         for pos in grid["positions"]:
             if pos["level"] == target_level and pos["qty_pieces"] == 0:
                 level_price = _level_target_price(grid["center_price"], target_level, grid["step_pct"])
+                pct_per_level = _p(state, "max_pos_per_level")
                 return [{
                     "label":    f"GRID-BUY-L{abs(target_level)}",
                     "category": "BUY",
                     "priority": 7,
                     "advice":   (
                         f"价格触 -{abs(target_level)} 档（¥{level_price:.0f}），"
-                        f"建议买 1 把（每档 {int(PARAMS['max_pos_per_level']*100)}% 仓位），"
-                        f"7 天后可挂卖到 +1 档（约 +{PARAMS['grid_step_pct']*100:.0f}% 净利）"
+                        f"建议买 1 把（每档 {int(pct_per_level*100)}% 仓位），"
+                        f"7 天后可挂卖到 +1 档（约 +{grid['step_pct']*100:.0f}% 净利）"
                     ),
                     "qty_pieces":   1,
                     "level":         target_level,
@@ -256,19 +268,26 @@ def evaluate_sell_signals(state, item, ind) -> list:
 # ============================================================
 # 网格成交后的状态更新（由 monitor 调用）
 # ============================================================
-def apply_buy_fill(item, signal, fill_price):
-    """网格 BUY 信号被推送 + 用户确认买入后调用。"""
+def apply_buy_fill(item, signal, fill_price, state=None):
+    """
+    网格 BUY 信号被推送 + 用户确认买入后调用。
+    state 可选；若提供，则 T+N 锁仓天数从 state 读，否则用模块默认 PARAMS。
+    """
     grid = item.get("grid_state")
     if not grid:
         return
     level = signal.get("level")
+    if state is not None:
+        tplus_days = _p(state, "tplus7_days")
+    else:
+        tplus_days = PARAMS["tplus7_days"]
     for pos in grid["positions"]:
         if pos["level"] == level:
             pos["qty_pieces"] = signal.get("qty_pieces", 1)
             pos["entry_price"] = fill_price
             pos["entry_time"] = utils.now_iso()
             now_dt = datetime.now().astimezone()
-            pos["unlock_time"] = (now_dt + timedelta(days=PARAMS["tplus7_days"])).isoformat()
+            pos["unlock_time"] = (now_dt + timedelta(days=tplus_days)).isoformat()
             break
 
 
