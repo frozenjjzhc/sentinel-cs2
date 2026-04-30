@@ -82,7 +82,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="Sentinel CS2 Monitor API",
-    version="3.0.0",
+    version="3.0.1",
     description="本地状态文件 → REST API 桥接层 + 前端 dashboard + 嵌入式调度器。",
     lifespan=lifespan,
 )

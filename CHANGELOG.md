@@ -5,6 +5,22 @@
 
 ---
 
+## [3.0.1] — 2026-04-29
+
+### 性能改进
+- **scraper 动态 wait**：`fetch_item` / `fetch_market` 用 `wait_for_function` 等价格头/「大盘指数」文本出现就走（上限 8s/6s + 200-300ms grace），替代原固定 6s/4s 死等。匹配失败有兜底回到固定 wait，零回归风险。
+- **资源拦截**：`SteamDTScraper` 默认 `block_images=True`，浏览器拦截 `image/media/font` 请求，节省带宽 + 加快渲染。`monitor_fast` 检测到任何 item 缺 `image_url` 时本轮放行图片自动补齐。
+- **效果**：单件 6.3s → ~2s，100 件 cycle 由 ~10 分钟超时 → ~4 分钟，可监控品种上限 ~75 件 → ~200 件。
+
+### 新增
+- **桌面端单实例守卫**：`desktop_app.py` 启动时在 `%APPDATA%\Sentinel\desktop.lock` 拿 Windows 独占文件锁；第二次双击 `Sentinel-Desktop.bat` 拿锁失败 → POST `/api/desktop/show` 通知首个实例显示窗口 → 本进程退出。POST 失败兜底弹 Windows 消息框。`Sentinel.bat` 浏览器模式不持锁，attach 行为不变。
+- **新端点**：`POST /api/desktop/show` — 桌面模式专属，让窗口从托盘恢复并置前；返回 `{ok: true, desktop: true}`。Sentinel.bat 浏览器模式下不存在。
+
+### 升级须知
+- 无新依赖，无 schema 变更，state 文件不动。覆盖代码即可。
+
+---
+
 ## [3.0.0] — 2026-04-29
 
 ### 重大变更
