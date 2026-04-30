@@ -2,8 +2,72 @@
 state.json read/write + history maintenance.
 """
 
+import uuid
 from . import config
 from . import utils
+
+
+def _ensure_lan_config(s: dict) -> bool:
+    """v2.2+：保证 global.lan 节点和 lan_token 存在。返回是否做了修改。"""
+    glb = s.setdefault("global", {})
+    changed = False
+    lan = glb.get("lan")
+    if not isinstance(lan, dict):
+        glb["lan"] = {"host": "127.0.0.1", "enabled": False, "trust_private": False}
+        changed = True
+    else:
+        if "host" not in lan:
+            lan["host"] = "127.0.0.1"
+            changed = True
+        if "enabled" not in lan:
+            lan["enabled"] = lan.get("host") == "0.0.0.0"
+            changed = True
+        if "trust_private" not in lan:
+            lan["trust_private"] = False
+            changed = True
+    if not glb.get("lan_token"):
+        glb["lan_token"] = uuid.uuid4().hex
+        changed = True
+    return changed
+
+
+def _ensure_strategy_params(s: dict) -> bool:
+    """
+    v2.3+：保证 global.strategies[sid].params 节点存在，缺失字段用模块默认 PARAMS 补全。
+    AI 提案改 state.global.strategies[sid].params[field] 后，这里读出来就拿到新值。
+    延迟 import 避免循环：lib.strategies → lib.state → ...
+    """
+    glb = s.setdefault("global", {})
+    strategies = glb.setdefault("strategies", {})
+    changed = False
+    try:
+        from . import strategies as _strats_mod
+        defaults_by_sid = _strats_mod.get_strategy_param_defaults()
+    except Exception:
+        return False
+    for sid, defaults in defaults_by_sid.items():
+        slot = strategies.setdefault(sid, {})
+        if not isinstance(slot, dict):
+            strategies[sid] = slot = {}
+        params = slot.get("params")
+        if not isinstance(params, dict):
+            slot["params"] = dict(defaults)
+            changed = True
+            continue
+        for k, v in defaults.items():
+            if k not in params:
+                params[k] = v
+                changed = True
+    return changed
+
+
+def _ensure_fundamentals_refresh(s: dict) -> bool:
+    """v2.3+：fundamentals.refresh_days 默认 1（每天调 LLM 分类）。"""
+    fund = s.setdefault("global", {}).setdefault("fundamentals", {})
+    if "refresh_days" not in fund:
+        fund["refresh_days"] = 1
+        return True
+    return False
 
 
 def load_state():
@@ -11,6 +75,16 @@ def load_state():
     s = utils.read_json(config.STATE_FILE)
     if s is None:
         raise FileNotFoundError(f"State file not found: {config.STATE_FILE}")
+    # 自愈：补全 LAN / 策略 params / 基本面刷新频率（首次启动新版本会触发一次写盘）
+    changed = False
+    changed |= _ensure_lan_config(s)
+    changed |= _ensure_strategy_params(s)
+    changed |= _ensure_fundamentals_refresh(s)
+    if changed:
+        try:
+            utils.write_json(config.STATE_FILE, s)
+        except Exception:
+            pass
     return s
 
 

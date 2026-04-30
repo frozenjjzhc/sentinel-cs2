@@ -37,10 +37,10 @@ import os
 
 try:
     from contextlib import asynccontextmanager
-    from fastapi import FastAPI, HTTPException, Body
+    from fastapi import FastAPI, HTTPException, Body, Request
     from fastapi.middleware.cors import CORSMiddleware
     from fastapi.staticfiles import StaticFiles
-    from fastapi.responses import FileResponse
+    from fastapi.responses import FileResponse, JSONResponse
     from pydantic import BaseModel
     import uvicorn
 except ImportError:
@@ -82,34 +82,55 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="Sentinel CS2 Monitor API",
-    version="2.1.0",
+    version="3.0.0",
     description="本地状态文件 → REST API 桥接层 + 前端 dashboard + 嵌入式调度器。",
     lifespan=lifespan,
 )
 
-# ==================== 前端静态文件 ====================
-# 把 dashboard 直接挂到 / 上，访问 http://localhost:8000/ 即可
-FRONTEND_DIR = os.path.join(config.PROJECT_DIR, "frontend")
+# ==================== 前端静态文件（React build）====================
+# v2.2.0 起前端改为 Vite + React。构建产物 → frontend/dist/
+# 旧版 frontend/preview.html 单文件模式仍作为 fallback 保留。
+FRONTEND_ROOT = os.path.join(config.PROJECT_DIR, "frontend")
+FRONTEND_DIST = os.path.join(FRONTEND_ROOT, "dist")
+FRONTEND_DIST_ASSETS = os.path.join(FRONTEND_DIST, "assets")
+LEGACY_HTML = os.path.join(FRONTEND_ROOT, "preview.html")
+
+
+def _serve_index():
+    """返回 React SPA 主页；若未构建则降级到 legacy preview.html。"""
+    react_index = os.path.join(FRONTEND_DIST, "index.html")
+    if os.path.exists(react_index):
+        return FileResponse(react_index, media_type="text/html")
+    if os.path.exists(LEGACY_HTML):
+        return FileResponse(LEGACY_HTML, media_type="text/html")
+    raise HTTPException(
+        404,
+        "前端未构建：cd frontend && npm install && npm run build",
+    )
 
 
 @app.get("/")
 def serve_dashboard():
-    """根路径直接返回 dashboard 页面。"""
-    html_path = os.path.join(FRONTEND_DIR, "preview.html")
-    if os.path.exists(html_path):
-        return FileResponse(html_path, media_type="text/html")
-    raise HTTPException(404, f"frontend not found at {html_path}")
+    return _serve_index()
 
 
-# 把整个 frontend 目录挂到 /static（用于 css / js / 图片等静态资源）
-if os.path.isdir(FRONTEND_DIR):
-    app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
+# Vite 把所有 hashed 资源放到 dist/assets/，挂到 /assets
+if os.path.isdir(FRONTEND_DIST_ASSETS):
+    app.mount(
+        "/assets",
+        StaticFiles(directory=FRONTEND_DIST_ASSETS),
+        name="assets",
+    )
+
+# 兼容老路径 — 万一有用户还在引用 /static
+if os.path.isdir(FRONTEND_ROOT):
+    app.mount("/static", StaticFiles(directory=FRONTEND_ROOT), name="static")
 
 # ==================== CORS ====================
 # 严格本地：只允许从 localhost / 127.0.0.1 / file:// 协议加载的前端访问
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
+# LAN 模式：放开所有 origin（结合 X-Sentinel-Token 鉴权保护写端点）
+def _build_cors_origins():
+    base = [
         "http://localhost",
         "http://localhost:5173",   # Vite dev
         "http://localhost:8000",
@@ -118,12 +139,74 @@ app.add_middleware(
         "http://127.0.0.1:5173",
         "http://127.0.0.1:8000",
         "http://127.0.0.1:8080",
-        "null",                    # file:// 协议（直接双击 preview.html）
-    ],
+        "null",                    # file:// 协议
+    ]
+    try:
+        st = state_mod.load_state()
+        if st.get("global", {}).get("lan", {}).get("enabled"):
+            return ["*"]   # LAN 模式：手机/局域网任意 IP 都能访问（写端点仍受 token 保护）
+    except Exception:
+        pass
+    return base
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_build_cors_origins(),
     allow_credentials=False,
     allow_methods=["GET", "POST", "DELETE"],
     allow_headers=["*"],
 )
+
+
+# ==================== LAN 鉴权中间件 ====================
+# 写端点（POST/DELETE）+ 来自非本机的请求 → 必须带 X-Sentinel-Token
+# 本机请求（127.0.0.1 / ::1）一律放行，保证桌面/浏览器模式不受影响
+# 信任内网模式（lan.trust_private=True）：私网/CGNAT/链路本地 IP 段也免 token
+# 包含：
+#   RFC1918：192.168.0.0/16, 10.0.0.0/8, 172.16.0.0/12  （is_private 内置）
+#   IPv6 ULA：fc00::/7                                   （is_private 内置）
+#   RFC6598 CGNAT：100.64.0.0/10                          （手动加，覆盖 Tailscale/ZeroTier/某些 ISP）
+#   链路本地：169.254.0.0/16, fe80::/10                  （is_link_local 内置）
+def _is_private_ip(host: str) -> bool:
+    if not host:
+        return False
+    import ipaddress
+    try:
+        ip = ipaddress.ip_address(host)
+        if ip.is_private or ip.is_link_local:
+            return True
+        # CGNAT 段（RFC6598）— Python ipaddress 不归为 private
+        if isinstance(ip, ipaddress.IPv4Address):
+            return ip in ipaddress.IPv4Network("100.64.0.0/10")
+        return False
+    except ValueError:
+        return False
+
+
+@app.middleware("http")
+async def lan_auth_middleware(request: Request, call_next):
+    method = request.method.upper()
+    if method in ("POST", "DELETE"):
+        client_host = request.client.host if request.client else ""
+        # 1) 本机环回：直接放行
+        if client_host in ("127.0.0.1", "::1", "localhost"):
+            return await call_next(request)
+        # 2) 信任内网模式 + 来源是私有 IP：放行
+        try:
+            lan_cfg = state_mod.load_state().get("global", {}).get("lan", {}) or {}
+            expected = state_mod.load_state().get("global", {}).get("lan_token", "")
+        except Exception:
+            lan_cfg, expected = {}, ""
+        if lan_cfg.get("trust_private") and _is_private_ip(client_host):
+            return await call_next(request)
+        # 3) 否则要求 token
+        tok = request.headers.get("X-Sentinel-Token", "")
+        if not expected or tok != expected:
+            return JSONResponse(
+                {"detail": "missing or invalid X-Sentinel-Token (LAN write requires token, or enable trust_private)"},
+                status_code=401,
+            )
+    return await call_next(request)
 
 
 # ==================== Helpers ====================
@@ -413,7 +496,7 @@ def get_circuit_breaker():
 
 # ==================== 写入端点 ====================
 # 板块固定选项（用户指定）
-SECTOR_OPTIONS = ["一代手套", "二代手套", "三代手套", "武库", "千百战", "收藏品"]
+SECTOR_OPTIONS = ["一代手套", "二代手套", "三代手套", "武库", "千百战", "收藏品", "刀", "贴纸"]
 
 
 # ---------- Pydantic 请求模型（必须先于使用它们的端点定义） ----------
@@ -537,7 +620,7 @@ def toggle_grid(body: GridToggleRequest):
         ma_30 = ind.get("ma_month")
         if not ma_30 or ma_30 <= 0:
             raise HTTPException(400, "数据不足以计算 30 日均价（至少需要 30 天历史）")
-        item["grid_state"] = grid_half_v1._init_grid_state(item, ma_30)
+        item["grid_state"] = grid_half_v1._init_grid_state(item, ma_30, state=state)
     else:
         # 关闭：保留状态但 active=False（保留持仓记录便于查询）
         if item.get("grid_state"):
@@ -561,7 +644,7 @@ def restart_grid(item_id: str):
     ma_30 = ind.get("ma_month")
     if not ma_30 or ma_30 <= 0:
         raise HTTPException(400, "数据不足以重新锚定")
-    item["grid_state"] = grid_half_v1._init_grid_state(item, ma_30)
+    item["grid_state"] = grid_half_v1._init_grid_state(item, ma_30, state=state)
     state_mod.save_state(state)
     return {"ok": True, "grid_state": item["grid_state"]}
 
@@ -582,6 +665,99 @@ def set_whale_toggle(body: WhaleToggleRequest):
     state.setdefault("global", {})["ignore_whale_signals"] = body.ignore_whale_signals
     state_mod.save_state(state)
     return {"ok": True, "ignore_whale_signals": body.ignore_whale_signals}
+
+
+# ---------- LAN 访问 + Token 鉴权（v2.2+） ----------
+class LanConfigRequest(BaseModel):
+    enabled: Optional[bool] = None          # True = bind 0.0.0.0
+    trust_private: Optional[bool] = None    # True = RFC1918 私有 IP 段免 token
+
+
+def _list_lan_ips() -> list:
+    """返回本机所有非回环 IPv4 地址（用于 dashboard 展示 + QR 码生成）。"""
+    import socket
+    ips = []
+    try:
+        # 主路由 IP（外联默认网关）
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        try:
+            s.connect(("8.8.8.8", 80))
+            ips.append(s.getsockname()[0])
+        finally:
+            s.close()
+    except Exception:
+        pass
+    # 全部网卡 IP
+    try:
+        host = socket.gethostname()
+        for ip in socket.gethostbyname_ex(host)[2]:
+            if ip not in ips and not ip.startswith("127."):
+                ips.append(ip)
+    except Exception:
+        pass
+    return ips
+
+
+@app.get("/api/global/lan")
+def get_lan_config():
+    """v2.2+：返回 LAN 访问配置 + 本机 IP 列表 + 当前 token。"""
+    state = _load_state_or_404()
+    glb = state.get("global", {})
+    lan = glb.get("lan", {"host": "127.0.0.1", "enabled": False, "trust_private": False}) or {}
+    return {
+        "enabled":       bool(lan.get("enabled")),
+        "host":          lan.get("host", "127.0.0.1"),
+        "trust_private": bool(lan.get("trust_private", False)),
+        "token":         glb.get("lan_token", ""),
+        "ips":           _list_lan_ips(),
+        "port":          8000,
+        "needs_restart": True,   # 切换 host 必须重启 API 才生效
+    }
+
+
+@app.post("/api/global/lan")
+def set_lan_config(body: LanConfigRequest):
+    """切 LAN 模式开关 / 信任私网开关。返回提示「需重启 API 生效（仅 enabled 切换才需要）」。"""
+    state = _load_state_or_404()
+    glb = state.setdefault("global", {})
+    lan = glb.setdefault("lan", {})
+    needs_restart = False
+    if body.enabled is not None:
+        old_enabled = bool(lan.get("enabled"))
+        lan["enabled"] = bool(body.enabled)
+        lan["host"] = "0.0.0.0" if body.enabled else "127.0.0.1"
+        if old_enabled != lan["enabled"]:
+            needs_restart = True
+    if body.trust_private is not None:
+        # 信任私网开关：实时生效（中间件每次请求都重读 state），不需要重启
+        lan["trust_private"] = bool(body.trust_private)
+    if not glb.get("lan_token"):
+        import uuid as _u
+        glb["lan_token"] = _u.uuid4().hex
+    state_mod.save_state(state)
+    return {
+        "ok": True,
+        "enabled":       lan.get("enabled", False),
+        "trust_private": lan.get("trust_private", False),
+        "host":          lan.get("host", "127.0.0.1"),
+        "needs_restart": needs_restart,
+        "msg": (
+            "已写入 state.json。重启 backend 后 LAN 绑定才会变化（trust_private 切换是实时的）"
+            if needs_restart
+            else "已写入 state.json。trust_private 实时生效，无需重启。"
+        ),
+    }
+
+
+@app.post("/api/global/lan/reset_token")
+def reset_lan_token():
+    """重置 LAN token（旧 token 立即失效，所有手机端会话需要重新扫码）。"""
+    import uuid as _u
+    state = _load_state_or_404()
+    glb = state.setdefault("global", {})
+    glb["lan_token"] = _u.uuid4().hex
+    state_mod.save_state(state)
+    return {"ok": True, "token": glb["lan_token"]}
 
 
 @app.get("/api/global/data_dir")
@@ -1131,23 +1307,67 @@ def remove_item(item_id: str):
     return {"ok": True, "count": len(new_items)}
 
 
+# ==================== SPA fallback ====================
+# React Router 用 history mode 路由（/charts /positions ...）
+# 任何非 API、非 /assets、非 /static 的 GET 都返回 index.html，让前端接管路由。
+# 必须放在所有 @app.get/post/delete 之后，避免抢占 /api/* 端点。
+@app.get("/{full_path:path}")
+def spa_fallback(full_path: str):
+    if (
+        full_path.startswith("api/")
+        or full_path.startswith("assets/")
+        or full_path.startswith("static/")
+        or full_path == "docs"
+        or full_path == "openapi.json"
+    ):
+        raise HTTPException(404, f"Not Found: /{full_path}")
+    return _serve_index()
+
+
 # ==================== 启动 ====================
+def _resolve_host() -> str:
+    """从 state.global.lan.host 决定绑定地址；默认 127.0.0.1（仅本机）。"""
+    try:
+        st = state_mod.load_state()
+        h = st.get("global", {}).get("lan", {}).get("host", "127.0.0.1")
+        return "0.0.0.0" if h == "0.0.0.0" else "127.0.0.1"
+    except Exception:
+        return "127.0.0.1"
+
+
 if __name__ == "__main__":
+    HOST = _resolve_host()
+    LAN_MODE = HOST == "0.0.0.0"
+    # 读 trust_private 用于打印
+    try:
+        _lan_cfg = state_mod.load_state().get("global", {}).get("lan", {})
+        TRUST_PRIVATE = bool(_lan_cfg.get("trust_private", False))
+    except Exception:
+        TRUST_PRIVATE = False
     print("=" * 60)
-    print("  Sentinel API Server (LOCAL ONLY)")
+    print("  Sentinel API Server")
     print("=" * 60)
-    print("  URL:        http://localhost:8000")
-    print("  API 文档:   http://localhost:8000/docs")
-    print("  调度器:     嵌入式（API 启动后自动开跑监控）")
-    print("    - monitor_fast:  每 10 分钟")
-    print("    - monitor_slow:  每 60 分钟")
-    print("    - daily_review:  每天 23:00")
-    print("  停止:       Ctrl+C 或关闭此窗口")
-    print("  仅本机可访问，外部无法连接")
+    print(f"  URL:        http://localhost:8000")
+    print(f"  API 文档:   http://localhost:8000/docs")
+    print(f"  绑定:       {HOST}:8000  ({'LAN 模式（局域网可访问）' if LAN_MODE else '仅本机环回'})")
+    if LAN_MODE:
+        ips = _list_lan_ips()
+        if TRUST_PRIVATE:
+            print(f"  内网信任:   ON — 同 LAN 的私网设备免 token，可直接输 URL：")
+            for ip in ips:
+                print(f"                http://{ip}:8000")
+        else:
+            print(f"  内网信任:   OFF — 写端点要求 X-Sentinel-Token header")
+            print(f"              在「设置」页扫 QR 或开启「内网设备免 token」")
+    print(f"  调度器:     嵌入式（API 启动后自动开跑监控）")
+    print(f"    - monitor_fast:  每 10 分钟")
+    print(f"    - monitor_slow:  每 60 分钟")
+    print(f"    - daily_review:  每天 23:00")
+    print(f"  停止:       Ctrl+C 或关闭此窗口")
     print("=" * 60)
     uvicorn.run(
         "backend_api:app",
-        host="127.0.0.1",   # 仅本机环回，局域网/外网均无法访问
+        host=HOST,
         port=8000,
         reload=False,
         log_level="info",
