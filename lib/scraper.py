@@ -90,9 +90,10 @@ class SteamDTScraper:
     Context manager wrapping a persistent playwright browser.
     """
 
-    def __init__(self, profile_dir=None, headless=True):
+    def __init__(self, profile_dir=None, headless=True, block_images=True):
         self.profile_dir = profile_dir or config.PLAYWRIGHT_PROFILE
         self.headless = headless
+        self.block_images = block_images
         self._pw = None
         self._context = None
         self._page = None
@@ -123,6 +124,16 @@ class SteamDTScraper:
                 stealth_sync(self._page)
             except Exception:
                 pass
+        if self.block_images:
+            try:
+                self._context.route(
+                    "**/*",
+                    lambda route, req: route.abort()
+                    if req.resource_type in ("image", "media", "font")
+                    else route.continue_(),
+                )
+            except Exception:
+                pass
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -139,7 +150,14 @@ class SteamDTScraper:
     def fetch_market(self) -> dict:
         try:
             self._page.goto(config.HOMEPAGE_URL, wait_until="domcontentloaded")
-            self._page.wait_for_timeout(config.HOMEPAGE_WAIT_MS)
+            try:
+                self._page.wait_for_function(
+                    "() => document.body && document.body.innerText.indexOf('大盘指数') >= 0",
+                    timeout=config.HOMEPAGE_WAIT_MAX_MS,
+                )
+                self._page.wait_for_timeout(config.HOMEPAGE_GRACE_MS)
+            except Exception:
+                self._page.wait_for_timeout(config.HOMEPAGE_WAIT_MS)
             text = self._page.inner_text("body")
         except Exception as e:
             return {"market_index": None, "market_change_pct": None, "_error": str(e)}
@@ -165,7 +183,16 @@ class SteamDTScraper:
         image_url = None
         try:
             self._page.goto(url, wait_until="domcontentloaded")
-            self._page.wait_for_timeout(config.PAGE_LOAD_WAIT_MS)
+            try:
+                # 等到 head 价格行 "¥xxxx.xx +/- N.NN %" 出现就走，比死等 6s 快得多
+                self._page.wait_for_function(
+                    "() => document.body && /¥\\s*\\d+(\\.\\d+)?\\s*[+-]\\s*\\d+\\.\\d+\\s*%/.test(document.body.innerText)",
+                    timeout=config.PAGE_LOAD_WAIT_MAX_MS,
+                )
+                self._page.wait_for_timeout(config.PAGE_LOAD_GRACE_MS)
+            except Exception:
+                # 兜底：动态匹配失败回到固定 wait
+                self._page.wait_for_timeout(config.PAGE_LOAD_WAIT_MS)
             text = self._page.inner_text("body")
             # 尝试抓饰品主图。优先级：
             # 1) img.zbt.com/e/steam/item/730/<base64-饰品名>.png  ← 真正的饰品独立图

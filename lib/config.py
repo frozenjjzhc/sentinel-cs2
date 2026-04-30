@@ -151,8 +151,14 @@ USER_AGENT = (
     "AppleWebKit/537.36 (KHTML, like Gecko) "
     "Chrome/147.0.0.0 Safari/537.36"
 )
-PAGE_LOAD_WAIT_MS = 6000      # 等待页面 JS 渲染
+PAGE_LOAD_WAIT_MS = 6000      # 死等 fallback（仅当动态 wait 失败时使用）
 HOMEPAGE_WAIT_MS = 4000
+
+# 动态 wait：等价格/大盘文本出现后再加个小 grace，命中即返回
+PAGE_LOAD_WAIT_MAX_MS = 8000
+PAGE_LOAD_GRACE_MS = 300
+HOMEPAGE_WAIT_MAX_MS = 6000
+HOMEPAGE_GRACE_MS = 200
 
 # ============================================================
 # Circuit breaker thresholds

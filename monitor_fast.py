@@ -150,7 +150,9 @@ def run_cycle(test_mode: bool = False, verbose: bool = False):
     if verbose:
         print(f"[{utils.now_iso()}] Starting cycle (test_mode={test_mode})")
 
-    with scraper_mod.SteamDTScraper() as scraper:
+    # 所有品种都已有 image_url 时拦截图片/字体/媒体下载，节省带宽和渲染时间
+    need_images = any(not it.get("image_url") for it in state_obj.get("items", []))
+    with scraper_mod.SteamDTScraper(block_images=not need_images) as scraper:
         # 2. Market index
         market = scraper.fetch_market()
         if verbose:
