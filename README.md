@@ -19,11 +19,30 @@
 >
 > 100% 本地 · 规则引擎 + 可选 LLM 语义层 · 苹果式 6 页 SPA。
 
+## 给会自己调参的交易者
+
+Sentinel 不做「人人同款」的推荐。它是一台 **开放的可调决策仪**——所有阈值、策略权重、bias 调节器、止损/止盈乘数都摊在 dashboard 上让你直接改；4 套策略并跑、shadow 模式给你真实的胜率与回报反馈；LLM 提议的参数变动先经过你审批才会落地。
+
+一个事实：每位优秀交易员都有自己的边界、节奏与风险偏好——平均化的推荐器永远拟合不了。Sentinel 把你的判断与习惯沉淀进系统：监控哪些品种、接受还是拒绝哪条 AI 调参、信任还是屏蔽哪类庄家信号，每一次选择都会让它更贴近你。**一年之后，你的 Sentinel 一定和别人的不一样**。
+
+如果你只想被告知「现在该抄哪个」，市面上有更轻的工具；如果你愿意把策略迭代成自己的——规则引擎、shadow 数据、4 路并跑对比、LLM 提案审批墙，全部为你打开。
+
 > ⚠️ **免责声明**：本工具仅用于个人学习与价格监控，不构成任何投资建议。CS2 饰品交易具有风险，使用者自担一切责任。本项目与 Valve、Steam、SteamDT 等任何第三方公司**无关联**。
 
 ---
 
 ## ✨ 最新版本重点
+
+### v3.0.0（2026-04 发布）— React UI · 桌面应用 · 局域网访问 · per-strategy AI
+| 维度 | 变化 |
+|---|---|
+| ⚛️ **React 重写** | 单文件 dashboard → **React + Vite + TypeScript SPA**，6 页路由化、移动端响应式 |
+| 🪟 **桌面应用** | `Sentinel-Desktop.bat` 启动 **pywebview 原生窗口 + 系统托盘**，关窗口最小化、监控持续运行 |
+| 📱 **局域网访问** | 设置页一键开启 LAN 模式 + token 鉴权 + 「内网信任」开关，**手机直接输 URL 即可 CRUD** |
+| 🤖 **AI 自动化** | 每天 23:00 daily_review 自动跑 LLM **复盘 + 参数提案**；新闻分类频率改为**每天** |
+| 🎯 **per-strategy AI** | RSI / MR / Grid 三策略的 PARAMS 搬到 state，AI 提案 `scope=strategy` 可针对**单策略**优化 |
+| 📈 **板块联动** | 主板块跟涨从「单独推送」改为「分阶共振多因子加成」（priority +0.5 + advice 标签） |
+| 🆕 **新板块** | 「刀」「贴纸」加入板块下拉 |
 
 ### v2.1.0（2026-04 发布）— 跨版本数据持久化
 | 维度 | 变化 |
@@ -486,6 +505,8 @@ D:\claude\xuanxiao\
 ├── 🔧 调度入口
 │   ├── setup.bat                    一键安装依赖
 │   ├── ⭐ Sentinel.bat               一键启动整套（API + 嵌入式监控 + 浏览器）
+│   ├── ⭐ Sentinel-Desktop.bat       v3+ 原生桌面应用（pywebview + 系统托盘）
+│   ├── desktop_app.py               桌面壳入口（uvicorn + pywebview + pystray）
 │   ├── stop_api.bat                 强制停 API（监控随之停止）
 │   ├── setup_autostart.bat          可选：装登录自启
 │   ├── uninstall_autostart.bat      卸载登录自启
@@ -528,14 +549,18 @@ D:\claude\xuanxiao\
 │   ├── screenshots/                 K 线截图（按日期）
 │   └── .playwright_profile/         Playwright cookies 持久化
 │
-├── 🎨 frontend/ — Sentinel UI
-│   ├── preview.html                 ⭐ 单文件 dashboard（双击直接看）
-│   ├── README.md                    前端设计文档
-│   ├── package.json                 React 项目（如需扩展）
-│   └── src/components/              React 组件源码
-│       ├── MagneticButton.jsx
-│       ├── HeroSection.jsx
-│       └── PriceAnalysisSection.jsx
+├── 🎨 frontend/ — Sentinel UI（v3.0 起 React + Vite + TS）
+│   ├── package.json / vite.config.ts / tsconfig.json
+│   ├── tailwind.config.js / postcss.config.js
+│   ├── index.html                   Vite 入口
+│   ├── src/
+│   │   ├── main.tsx / App.tsx       路由 + QueryClient 装配
+│   │   ├── index.css                设计令牌 + Liquid Glass + 战术网格
+│   │   ├── components/              Nav · DopplerCanvas · AKSilhouette · MagneticButton
+│   │   ├── pages/                   Home · Charts · Positions · Strategy · AIReview · Settings
+│   │   ├── lib/                     api.ts (30+ 端点) · format · toast
+│   │   └── hooks/                   useReveal
+│   └── dist/                        npm run build 产物（gitignored，运行时由 backend 服务）
 │
 └── requirements.txt                 Python 依赖
 ```

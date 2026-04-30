@@ -5,6 +5,46 @@
 
 ---
 
+## [3.0.0] — 2026-04-29
+
+### 重大变更
+- **前端整体迁移**：单文件 `frontend/preview.html`（3900+ 行）拆解为 **React + Vite + TypeScript** SPA，6 页 URL 路由化（`/` `/charts` `/positions` `/strategy` `/ai` `/settings`），dist 产物由 backend `/assets/*` 静态挂载 + SPA fallback 路由统一服务。Liquid Glass、战术网格、3D AK-47 SVG、WebGL Doppler 着色器全部按组件保留。
+- **桌面应用化**：新增 `desktop_app.py`（pywebview）+ `Sentinel-Desktop.bat` 静默启动；窗口集成 **pystray 系统托盘**，关闭窗口=最小化到托盘，监控/调度持续运行；右键托盘「退出 Sentinel」才真正终止全部进程。
+- **局域网访问 + Token 鉴权**：新增 `state.global.lan = { host, enabled, trust_private }` + `lan_token`。设置页 → 「📱 局域网访问」一键切 0.0.0.0:8000，POST/DELETE 来自非本机时强制 `X-Sentinel-Token` header。新「内网信任」开关：私网/CGNAT/链路本地 IP 段（RFC1918 + 100.64.0.0/10 + 169.254/16）免 token，**手机直接输 LAN URL 即可使用所有 CRUD**。
+- **策略参数搬到 state**：`rsi-reversion-v1` / `mean-reversion-v1` / `grid-half-v1` 三套策略的 PARAMS 从模块常量改为 `state.global.strategies[sid].params`，由 `lib/strategies/get_strategy_params(state, sid)` 合并默认值与覆盖；`lib/state.py` 自愈节点首启自动写入。
+- **AI 提案支持 `scope=strategy`**：`llm_analyst.propose_parameter_changes` schema 加 `strategy_id` 字段，prompt 显式列出每策略可调参数与合理范围；`apply_proposal` 三分支（global / item / strategy），写入对应 path 并自动备份原值。
+- **daily_review 自动跑 LLM**：`daily_review.py` 现在每次 23:00 cycle 都会自动调 `daily_review_commentary` + `propose_parameter_changes`（用户勾选启用模块后）。修复了之前必须在 dashboard 手动点按钮才会跑的实现疏漏。
+- **新闻分类频率改为每天**：`fundamentals.refresh_days` 默认 1（v2 是隐式 7 天）；可在 state 中改为任意天数。
+
+### 新增
+- 🪟 **原生桌面应用**：`Sentinel-Desktop.bat` → `pythonw desktop_app.py` 无 cmd 窗口启动；attach 模式（已有 backend 时只开窗口不重复启动 uvicorn）。
+- 📱 **手机访问就绪**：设置页 LanAccessSection 显示本机所有 LAN IP 列表 + QR 码（token 模式 / 信任模式自动切换 QR 内容）；前端 `?token=...` query 自动入库 localStorage。
+- 🎨 **Nav 新 logo**：盾牌轮廓 + 渐变填充 + 中心十字准星 SVG，呼应 Hero 区 AK-47 主题；hover 微旋转 + 阴影；Sentinel 文字渐变。
+- 📊 **Hero 总仓位预算「已用」展示**：实时计算 `已用 ¥X.Yk (NN%)`，颜色编码（80% 黄 / 100%+ 红）。
+- 📈 **板块联动 sector_boost**：原 monitor_slow「主板块跟涨」独立推送已删除（噪音过大），改为 phase-sync 策略多因子加成 — 主板块强领涨（leader RS ≥ 2）+ 本品种滞后（gap ≥ 2%）→ BUY 信号 priority +0.5 + advice 末尾追加 `[📈 板块「X」领涨 +N% 跟涨候选]`，写入 `signal.sector_boost` 字段供 shadow 复盘追踪。
+- 🆕 **板块下拉新增**：`刀` / `贴纸`（原有 6 项加这 2 项共 8 项）。
+- 📱 **响应式补齐**：Nav `<md` 收 hamburger（用 `<details>` 免依赖）；Charts 加 `onTouchStart/Move/End` 触摸 hover；Hero 字号三档 `text-5xl sm:text-6xl md:text-7xl lg:text-[88px]`；AK SVG `<sm` 隐藏；Settings 输入框去掉硬 `min-w` 改为 `w-full md:min-w-`。
+- 🔧 **新端点**：`GET/POST /api/global/lan`、`POST /api/global/lan/reset_token`。
+- 🔧 **TanStack Query** 缓存所有 API 调用，30s 自动刷新；`@tanstack/react-query` + `react-router-dom` + `qrcode` 加入前端依赖。
+- 🔧 **`captureTokenFromQuery()`**：手机扫 QR 后 URL `?token=...` 自动写入 localStorage 并清掉 query。
+
+### 修复
+- **基本面「逐条分析」字段错位**：原 `recent_updates` 用 `topic` 字段而前端读 `title`，导致条目标题全显示 `—`。前端 fallback `u.title || u.topic || u.summary`，附带 `type` 翻译（whale → 庄家 / minor → 小更新 / tech → 技术 / season → 赛季）+ `impact` 缩写（`strong_positive_short_term` → `强positive·短期`）。
+- **CSS 层级冲突**：自定义 CSS 中 `.tactical-grid > * { position: relative }` 覆盖了 Tailwind `.absolute` 工具类，导致 Hero 内 Doppler canvas / AK SVG / 玻璃卡片被压成 flex 行。修复：把所有自定义 CSS 包进 `@layer components`，让 utilities 层源序后置自然胜出。
+- **饰品图 403 Forbidden**：`img.zbt.com` 检查 Referer，从 `127.0.0.1:8000` 发起的请求被拒。所有 `<img>` 加 `referrerPolicy="no-referrer"` 让浏览器不发 Referer header。
+
+### 升级须知
+- 从 v2.1+ 升级到 v3.0：直接覆盖代码即可，state 自愈会补全 `lan / strategies / fundamentals.refresh_days` 三个新节点。
+- 第一次启动 `Sentinel-Desktop.bat` 需要 **WebView2 Runtime**（Win10/11 通常已预装）和已装 `pip install -r requirements.txt`（含 pywebview / pystray / Pillow）。
+- 想用手机访问：设置页「📱 局域网访问」勾选①「允许局域网访问」+ 重启 backend；勾选②「内网设备免 token」无需重启实时生效。Windows 防火墙首次会询问，选「专用网络」。
+- 切换 active 策略不会丢失 AI 调过的参数：每个策略的 params 独立存在 `state.global.strategies[sid].params`，切回来原样恢复。
+
+### 删除
+- `frontend/preview.html` 单文件 dashboard（备份保留为 `frontend/preview.legacy.html.bak`，已 gitignore）。
+- monitor_slow 的「主板块跟涨机会」独立 PushPlus 推送（噪音过大；信号已重构为 phase-sync 内联加成）。
+
+---
+
 ## [2.1.0] — 2026-04-28
 
 ### 新增
