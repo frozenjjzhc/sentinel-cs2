@@ -232,23 +232,55 @@ def daily_review_commentary(state: dict, *, force: bool = False) -> Optional[dic
 PARAM_PROPOSAL_SYSTEM = """You are a quant strategy iteration advisor. Based on past 30 days of shadow signal backtest data,
 suggest whether to adjust key parameters of the rule engine.
 
-Parameter list (all in thresholds):
-- today_pct_for_d1        D1 trigger today's gain threshold (%)
-- d1_distance_to_r1_min   Min distance from R1 for D1 (decimal, 0.02=2%)
-- min_volume_d1           Min volume for D1 trigger
-- rapid_drop_pct_1h       1H rapid drop threshold (%)
-- rapid_rise_pct_1h       1H rapid rise threshold (%)
-- fixed_stop_pct          Fixed stop loss (%, decimal)
-- trailing_stop_pct       Trailing stop loss (%, decimal)
+Three scopes available:
+
+A) scope="global" — engine-wide defaults, used when items don't have an override
+   Fields: fixed_stop_pct, trailing_stop_pct, dedup_window_hours
+
+B) scope="item" — per-item thresholds (item_id required)
+   Used by phase-sync-v1 BUY logic + global stop_loss/take_profit on every cycle.
+   Fields: today_pct_for_d1, d1_distance_to_r1_min, min_volume_d1,
+           rapid_drop_pct_1h, rapid_rise_pct_1h,
+           fixed_stop_pct, trailing_stop_pct
+
+C) scope="strategy" — per-strategy params (strategy_id required)
+   Used only by the matching strategy. Below are valid (strategy_id, field) pairs:
+     rsi-reversion-v1:
+       rsi_period (int, default 14)
+       rsi_oversold (int 0-50, default 30)
+       min_history_days (int >=20)
+       min_distance_to_mean (decimal 0-0.2, default 0.03)
+     mean-reversion-v1:
+       lookback_days (int >=10, default 20)
+       z_score_threshold (negative decimal, default -2.0; e.g. -1.8 = looser, -2.5 = stricter)
+       min_history_days (int >=20)
+       min_distance_to_mean (decimal, default 0.05)
+     grid-half-v1:
+       grid_step_pct (decimal 0.02-0.10, default 0.05)
+       grid_levels (int 2-5, default 3)
+       max_pos_per_level (decimal 0-0.30, default 0.10)
+       breakout_exit_pct (decimal 0.10-0.40, default 0.20)
+       emergency_zscore (negative decimal, default -2.5)
+       tplus7_days (int >=1, default 7)
 
 Logic:
-- Look at win_rate and avg_return. Win rate < 40% means threshold too loose (false signals) -> tighten
-- Win rate > 60% but count < 5 means threshold too strict (missing opportunities) -> loosen
-- avg_return < 0 with count > 5 means signal class is losing money overall -> significantly tighten
+- Filter shadow_stats by strategy first to know which knob is causing problems.
+- win_rate < 40% with count >= 5 -> threshold too loose -> tighten (e.g. raise rsi_oversold from 30 to 25,
+  raise min_distance_to_mean, lower z_score_threshold from -2 to -2.5)
+- win_rate > 60% with count < 5 -> threshold too strict -> loosen
+- avg_return < 0 with count > 5 -> the signal class loses money overall -> significantly tighten or block_stage
+- Don't propose changes if total samples per strategy < 5 (not enough signal).
 
-Each proposal must have confidence in [0,1] + rationale (<=80 Chinese chars).
+Each proposal must have:
+  - scope (one of global/item/strategy)
+  - if scope=item: item_id
+  - if scope=strategy: strategy_id (must be one of: rsi-reversion-v1, mean-reversion-v1, grid-half-v1)
+  - field (must match field allowed by that scope)
+  - current_value, proposed_value (numbers)
+  - rationale (<=80 Chinese chars)
+  - confidence (0-1)
+
 If nothing to change, return empty proposals list.
-
 Output strict JSON per schema, no markdown wrapping.
 """
 
@@ -262,8 +294,9 @@ PARAM_PROPOSAL_SCHEMA = {
                 "type": "object",
                 "required": ["scope", "field", "current_value", "proposed_value", "rationale", "confidence"],
                 "properties": {
-                    "scope":          {"enum": ["global", "item"]},
+                    "scope":          {"enum": ["global", "item", "strategy"]},
                     "item_id":        {"type": "string"},
+                    "strategy_id":    {"type": "string"},
                     "field":          {"type": "string"},
                     "current_value":  {"type": "number"},
                     "proposed_value": {"type": "number"},
@@ -306,15 +339,31 @@ def propose_parameter_changes(state: dict, *, force: bool = False) -> Optional[d
         for it in state.get("items", [])
     ]
     glb = state.get("global", {})
+
+    # 按策略分组 shadow（让 LLM 看清是哪个策略胜率不行）
+    shadow_by_strategy = shadow_mod.get_strategy_summary()
+
+    # 各策略当前 params（合并默认 + state 覆盖）
+    strategy_params = {}
+    try:
+        from . import strategies as _strats_mod
+        for sid in ("rsi-reversion-v1", "mean-reversion-v1", "grid-half-v1"):
+            strategy_params[sid] = _strats_mod.get_strategy_params(state, sid)
+    except Exception:
+        pass
+
     payload = {
-        "shadow_stats":         shadow_stats,
+        "shadow_stats_by_label":    shadow_stats,
+        "shadow_stats_by_strategy": shadow_by_strategy,
         "global_thresholds": {
             "fixed_stop_pct":     glb.get("fixed_stop_pct"),
             "trailing_stop_pct":  glb.get("trailing_stop_pct"),
             "dedup_window_hours": glb.get("dedup_window_hours"),
         },
         "per_item_thresholds": items_thresholds,
-        "current_bias":        state.get("global", {}).get("fundamentals", {}).get("bias"),
+        "strategy_params":     strategy_params,
+        "active_strategy":     glb.get("active_strategy"),
+        "current_bias":        glb.get("fundamentals", {}).get("bias"),
     }
 
     user_msg = "Shadow backtest + current parameters:\n\n" + json.dumps(payload, ensure_ascii=False, indent=2)
@@ -369,11 +418,22 @@ def apply_proposal(state: dict, proposal_id: str) -> dict:
 
     field = target["field"]
     new_val = target["proposed_value"]
-    if target["scope"] == "global":
+    scope = target.get("scope")
+
+    if scope == "global":
         glb = state.setdefault("global", {})
         target["original_value"] = glb.get(field)
         glb[field] = new_val
-    else:
+    elif scope == "strategy":
+        sid = target.get("strategy_id")
+        if not sid:
+            return {"ok": False, "error": "scope=strategy requires strategy_id"}
+        glb = state.setdefault("global", {})
+        slot = glb.setdefault("strategies", {}).setdefault(sid, {})
+        params = slot.setdefault("params", {})
+        target["original_value"] = params.get(field)
+        params[field] = new_val
+    elif scope == "item":
         item_id = target.get("item_id")
         item = next((it for it in state.get("items", []) if it["id"] == item_id), None)
         if not item:
@@ -381,12 +441,18 @@ def apply_proposal(state: dict, proposal_id: str) -> dict:
         thresholds = item.setdefault("thresholds", {})
         target["original_value"] = thresholds.get(field)
         thresholds[field] = new_val
+    else:
+        return {"ok": False, "error": "unknown scope: " + str(scope)}
 
     target["status"]     = "applied"
     target["applied_at"] = utils.now_iso()
+    target_str = scope + (
+        ":" + (target.get("strategy_id") or target.get("item_id") or "")
+        if scope in ("strategy", "item") else ""
+    )
     llm_provider.append_audit(
         state, "param_proposal", "applied",
-        target["scope"] + " " + field + ": " + str(target.get("original_value")) + " -> " + str(new_val),
+        target_str + " " + field + ": " + str(target.get("original_value")) + " -> " + str(new_val),
     )
     return {"ok": True, "proposal": target}
 

@@ -236,12 +236,36 @@ def run_cycle(test_mode: bool = False, verbose: bool = False):
         print(f"Evaluated {n_evaluated} shadow positions (7-day-old)")
 
     # Auto-refresh fundamentals from Steam News if due
+    # 内部判断：1) 检查时间到期否；2) 是否启用 LLM 新闻分类（is_module_enabled）
+    # frequency_days 默认 1（每天），可在 state.global.fundamentals.refresh_days 改
     try:
-        if news_monitor.update_fundamentals(state_obj):
+        refresh_days = (
+            state_obj.get("global", {}).get("fundamentals", {}).get("refresh_days") or 1
+        )
+        if news_monitor.update_fundamentals(state_obj, frequency_days=refresh_days):
             if verbose:
-                print(f"Fundamentals refreshed from Steam News. New bias: {state_obj['global']['fundamentals'].get('bias')}")
+                print(f"Fundamentals refreshed (every {refresh_days}d). New bias: {state_obj['global']['fundamentals'].get('bias')}")
     except Exception as e:
         utils.log_error(config.ERROR_LOG, f"news_monitor failed: {e}")
+
+    # Phase 3：AI 每日复盘评论（仅当用户勾选「daily_review」模块）
+    try:
+        from lib import llm_analyst
+        review = llm_analyst.daily_review_commentary(state_obj)
+        if verbose:
+            print(f"AI daily review: {'OK ' + review.get('model','?') if review else 'skipped (module disabled or LLM unavailable)'}")
+    except Exception as e:
+        utils.log_error(config.ERROR_LOG, f"daily_review_commentary failed: {e}")
+
+    # Phase 4：AI 参数调整提案（仅当用户勾选「param_proposal」模块；需 ≥5 条 shadow 样本）
+    try:
+        from lib import llm_analyst
+        proposal = llm_analyst.propose_parameter_changes(state_obj)
+        if verbose:
+            n = len((proposal or {}).get("proposals", [])) if proposal else 0
+            print(f"AI param proposals: {'生成 ' + str(n) + ' 条' if proposal else 'skipped (disabled / 样本不足 / LLM 不可用)'}")
+    except Exception as e:
+        utils.log_error(config.ERROR_LOG, f"propose_parameter_changes failed: {e}")
 
     # K-line screenshots (best-effort; runs in test mode too for verification)
     screenshot_results = {}
