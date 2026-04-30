@@ -68,6 +68,74 @@ if not os.path.isfile(_state_file):
 
 PORT = 8000
 
+# ---------------- 单实例锁 ----------------
+# 锁文件路径放在 DATA_DIR（%APPDATA%\Sentinel\desktop.lock）
+# 用 Windows 独占文件锁：同一时刻只允许一个 desktop_app 进程持有
+LOCK_FILE = os.path.join(_cfg.DATA_DIR, "desktop.lock")
+_lock_handle = None
+
+
+def _acquire_singleton_lock() -> bool:
+    """
+    尝试拿独占锁；成功返回 True（本进程是首个 desktop 实例）。
+    失败说明已有 desktop_app 在跑（Sentinel.bat 浏览器模式不会拿这个锁）。
+    """
+    global _lock_handle
+    try:
+        os.makedirs(os.path.dirname(LOCK_FILE), exist_ok=True)
+        _lock_handle = open(LOCK_FILE, "w")
+        if sys.platform == "win32":
+            import msvcrt
+            msvcrt.locking(_lock_handle.fileno(), msvcrt.LK_NBLCK, 1)
+        else:
+            import fcntl
+            fcntl.flock(_lock_handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        return True
+    except OSError:
+        try:
+            if _lock_handle:
+                _lock_handle.close()
+        except Exception:
+            pass
+        _lock_handle = None
+        return False
+
+
+def _notify_existing_and_exit():
+    """通知首个桌面实例显示窗口；POST 失败则弹消息框告知用户去托盘恢复。"""
+    posted = False
+    try:
+        r = requests.post(f"http://127.0.0.1:{PORT}/api/desktop/show", timeout=2.0)
+        posted = r.ok and r.json().get("desktop") is True
+    except Exception:
+        pass
+    if not posted and sys.platform == "win32":
+        try:
+            import ctypes
+            ctypes.windll.user32.MessageBoxW(
+                None,
+                "Sentinel 桌面端已经在运行。\n请从任务栏右下角紫色盾牌图标恢复窗口。",
+                "Sentinel",
+                0x40,  # MB_ICONINFORMATION
+            )
+        except Exception:
+            pass
+    sys.exit(0)
+
+
+def _register_desktop_routes():
+    """把 /api/desktop/show 挂到 backend FastAPI app；必须在 uvicorn 启动前调用。"""
+    from backend_api import app as _api_app
+
+    @_api_app.post("/api/desktop/show")
+    def _api_desktop_show():
+        if _window is not None:
+            try:
+                _window.show()
+            except Exception as e:
+                _log_error(f"desktop show error: {e}")
+        return {"ok": True, "desktop": True}
+
 
 def _resolve_host() -> str:
     """从 state.global.lan.host 决定绑定地址；默认 127.0.0.1。"""
@@ -193,9 +261,22 @@ def _start_tray():
 def main():
     global _window
 
+    # 1. 单实例守卫：拿不到锁说明已有 desktop_app 在跑 → 通知它显示窗口，本进程退出
+    if not _acquire_singleton_lock():
+        _log_error("[desktop] 检测到已有桌面实例 → 通知前台显示并退出本进程")
+        _notify_existing_and_exit()
+        return
+
+    # 2. backend 状态：
+    #    - API 没活 → 启 uvicorn，并在启动前把 /api/desktop/show 注册到 FastAPI app
+    #    - API 已活 → 一定不是另一个 desktop_app（锁拿到了），所以是 Sentinel.bat 浏览器模式，attach 打开窗口
     if _is_api_alive():
-        _log_error(f"[desktop] 检测到 :8000 已有 API 在跑 → attach 模式（仅打开窗口）")
+        _log_error(f"[desktop] 检测到 :8000 已有 API 在跑（推测 Sentinel.bat 浏览器模式）→ attach 模式（仅打开窗口）")
     else:
+        try:
+            _register_desktop_routes()
+        except Exception as e:
+            _log_error(f"WARN: register desktop routes failed: {e}\n{traceback.format_exc()}")
         _log_error(f"[desktop] backend bind = {BIND_HOST}:{PORT}, webview 将载入 {WEBVIEW_URL}")
         api_thread = threading.Thread(target=_run_api, daemon=True, name="sentinel-api")
         api_thread.start()
